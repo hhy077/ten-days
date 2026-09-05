@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>十日终焉 · 生背考官 · 轮回 MUD</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--blood:#b91c1c;--blood-dark:#7c0a0a;--bone:#d8d4c8;}
+html,body{height:100%;}
+body{background:#050505;color:var(--bone);font-family:"SimSun","STKaiti","KaiTi",serif;background-image:radial-gradient(circle at 20% 20%,rgba(185,28,28,.07),transparent 40%),radial-gradient(circle at 80% 80%,rgba(120,10,10,.09),transparent 40%);}
+#lamp{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at 50% 0%,rgba(230,230,225,.12),transparent 55%);animation:lamp-flicker 7s infinite;}
+@keyframes lamp-flicker{0%,100%{opacity:.9}5%{opacity:.35}7%{opacity:.8}9%{opacity:.3}52%{opacity:1}54%{opacity:.5}55%{opacity:.85}}
+.danger{color:var(--blood);animation:redPulse 3s infinite;font-weight:bold;letter-spacing:2px;}
+@keyframes redPulse{0%,100%{text-shadow:0 0 4px rgba(185,28,28,.8),0 0 12px rgba(185,28,28,.4);}50%{text-shadow:0 0 10px rgba(255,40,40,1),0 0 26px rgba(185,28,28,.9);}}
+#app{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;max-width:1200px;margin:0 auto;}
+#statusbar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:8px 14px;background:linear-gradient(180deg,#171717,#0c0c0c);border-bottom:1px solid #2a2a2a;font-size:13px;z-index:5;}
+.st{display:flex;align-items:center;gap:4px;color:#b9b5a8;}
+.bar{width:70px;height:8px;background:#222;border:1px solid #3a3a3a;border-radius:4px;overflow:hidden;display:inline-block;}
+.bar i{display:block;height:100%;background:var(--blood);transition:width .4s;}
+.bar.b-sp i{background:#3c7fd4;}
+.day{color:#ffd76b;font-weight:bold;font-size:15px;} .cycle{color:#c9b3ff;font-weight:bold;}
+.echo-chip{border:1px solid #7c5cff;color:#cfc2ff;padding:1px 8px;border-radius:10px;font-size:12px;background:rgba(124,92,255,.08);}
+.btn-mini{cursor:pointer;border:1px solid #3a3a3a;background:#181818;color:var(--bone);padding:2px 8px;border-radius:4px;font-size:12px;font-family:inherit;}
+.btn-mini:hover{border-color:var(--blood);color:#ffb3b3;}
+#titlebar{padding:6px 14px;text-align:center;font-size:12px;color:#666;letter-spacing:6px;}
+#titlebar .gd{color:#8b0000;font-size:14px;font-weight:bold;}
+#main{flex:1;display:flex;min-height:0;}
+#left{flex:1;display:flex;flex-direction:column;min-width:0;}
+#log{flex:1;overflow-y:auto;padding:16px 20px;line-height:1.95;font-size:15px;}
+#log p{margin-bottom:10px;animation:fadein .5s;}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+#log .nar{color:#cfcbc0;} #log .sys{color:#8f86d8;font-style:italic;}
+#log .talk .who{color:#e8e2ff;font-weight:bold;} #log .me{color:#ffd76b;text-align:right;}
+#log .danger{color:var(--blood);animation:redPulse 2s infinite;}
+#log .ok{color:#7ddc87;} #log .echo{color:#cfc2ff;border-left:2px solid #7c5cff;padding-left:10px;}
+#log .ghost{color:#ffa94c;} #log .center{text-align:center;color:#8b8b80;} #log .big{text-align:center;font-size:19px;letter-spacing:6px;color:#ffd76b;}
+#interact{padding:10px 16px;border-top:1px solid #242424;background:linear-gradient(0deg,#111,#0a0a0a);display:flex;flex-direction:column;gap:8px;}
+#quickButtons{display:flex;flex-wrap:wrap;gap:8px;}
+.qbtn{border:1px solid #3a3a3a;background:#151515;color:var(--bone);padding:7px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px;transition:.15s;text-align:left;}
+.qbtn:hover{border-color:var(--blood);background:#1c0f0f;transform:translateY(-1px);}
+.qbtn.echo-action{border-color:#7c5cff;color:#d9ccff;box-shadow:0 0 10px rgba(124,92,255,.25);}
+#inputLine{display:flex;gap:8px;}
+#freeInput{flex:1;background:#0d0d0d;border:1px solid #333;color:var(--bone);padding:10px 12px;font-family:inherit;font-size:15px;border-radius:6px;outline:none;}
+#freeInput:focus{border-color:#5a4a8a;box-shadow:0 0 8px rgba(124,92,255,.2);}
+#submitBtn{border:none;background:var(--blood);color:#fff;padding:0 22px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:15px;font-weight:bold;letter-spacing:2px;}
+#submitBtn:hover{background:var(--blood-dark);}
+#tipLine{font-size:12px;color:#5a5a5a;} #tipLine b{color:#b91c1c;}
+#right{width:280px;min-width:280px;border-left:1px solid #242424;background:#0b0b0b;display:flex;flex-direction:column;}
+.panel-tab{display:flex;border-bottom:1px solid #222;}
+.panel-tab button{flex:1;background:#0d0d0d;border:none;color:#777;padding:10px;cursor:pointer;font-family:inherit;font-size:13px;letter-spacing:3px;}
+.panel-tab button.active{color:var(--bone);border-bottom:2px solid var(--blood);background:#131313;}
+.panel-body{flex:1;overflow-y:auto;padding:12px;}
+.panel-body h4{color:#888;font-size:12px;letter-spacing:2px;margin:12px 0 6px;border-bottom:1px solid #1f1f1f;padding-bottom:4px;}
+.item-card{background:#131313;border:1px solid #262626;border-left:3px solid #444;border-radius:4px;padding:8px 10px;margin-bottom:8px;font-size:13px;}
+.item-card .iname{color:var(--bone);font-weight:bold;} .item-card .idesc{color:#8a8a80;font-size:12px;margin-top:3px;}
+.clue-card{background:#131313;border-left:3px solid #c9b3ff;font-size:13px;padding:8px 10px;margin-bottom:8px;}
+.clue-card.risk{border-left-color:var(--blood);} .tai{color:#ffa94c;font-weight:bold;}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:10;display:none;}
+#fx.rush{display:block;background:rgba(150,0,0,.85);animation:rush 1.2s infinite;}
+@keyframes rush{0%{opacity:.2}50%{opacity:1}100%{opacity:.2}}
+#fx.dead{display:block;background:rgba(0,0,0,.96);}
+#fx.dead .shade{position:absolute;inset:0;background:radial-gradient(circle,rgba(0,0,0,.2) 30%,rgba(120,0,0,.4) 70%);animation:deadshade 2.5s infinite;}
+@keyframes deadshade{0%,100%{opacity:.4}50%{opacity:1}}
+.fx-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;text-align:center;padding:20px;}
+.fx-big{font-size:54px;color:#ff2a2a;letter-spacing:10px;font-weight:bold;animation:redPulse 1s infinite;}
+.fx-sub{color:#ffe9e9;font-size:18px;letter-spacing:4px;}
+.fx-btn{margin-top:10px;pointer-events:auto;font-family:inherit;cursor:pointer;background:var(--blood);color:#fff;border:none;padding:12px 30px;font-size:16px;letter-spacing:4px;border-radius:4px;}
+.fx-btn:hover{background:var(--blood-dark);}
+::-webkit-scrollbar{width:8px;} ::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px;}
+#menu{position:fixed;inset:0;z-index:20;background:radial-gradient(circle at 50% 30%,#161616,#050505);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:30px;overflow:auto;}
+#menu h1{font-size:40px;letter-spacing:12px;color:var(--blood);animation:redPulse 2s infinite;}
+#menu .sub{color:#777;letter-spacing:6px;font-size:13px;margin-bottom:8px;}
+.menu-btn{font-family:inherit;cursor:pointer;background:#101010;border:1px solid #3a3a3a;color:var(--bone);width:280px;padding:13px;font-size:16px;letter-spacing:5px;transition:.2s;}
+.menu-btn:hover{border-color:var(--blood);color:#ffb3b3;background:#190d0d;}
+.savelist{max-height:230px;overflow:auto;display:flex;flex-direction:column;gap:6px;width:340px;}
+.savelist .row{display:flex;gap:6px;align-items:center;}
+.savelist .menu-btn{width:auto;flex:1;padding:8px;font-size:13px;letter-spacing:1px;}
+#userbar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;width:340px;color:#9a93b3;font-size:13px;letter-spacing:1px;}
+#userbar .who{color:#ffd76b;letter-spacing:2px;}
+#login{position:fixed;inset:0;z-index:70;background:rgba(3,3,3,.94);display:none;align-items:center;justify-content:center;padding:20px;}
+#login.show{display:flex;}
+.login-box{width:min(420px,96vw);background:#0c0b0b;border:1px solid #2b2540;border-radius:8px;padding:26px;display:flex;flex-direction:column;gap:14px;}
+.login-box h3{color:#e4dcff;letter-spacing:6px;text-align:center;margin:0 0 4px;}
+.lf-row{display:flex;align-items:center;gap:10px;}
+.lf-row label{color:#8a82a8;width:64px;flex:none;font-size:14px;letter-spacing:2px;}
+.lf-row input{flex:1;background:#141020;border:1px solid #3a3350;color:#e7e0ff;padding:10px 12px;font-family:inherit;font-size:14px;outline:none;}
+.lf-row input:focus{border-color:#6a4cff;}
+.login-msg{color:#b91c1c;font-size:13px;min-height:18px;text-align:center;letter-spacing:1px;}
+.login-actions{display:flex;gap:10px;}
+.login-actions .menu-btn{flex:1;width:auto;padding:11px;font-size:15px;}
+.login-foot{color:#5c5473;font-size:12px;text-align:center;letter-spacing:1px;}
+.hint{color:#555;font-size:12px;letter-spacing:2px;max-width:620px;text-align:center;line-height:2;}
+#lore{position:fixed;inset:0;z-index:60;background:rgba(3,3,3,.92);display:none;align-items:center;justify-content:center;padding:20px;}
+#lore.show{display:flex;}
+.lore-box{width:min(720px,96vw);max-height:88vh;background:#0c0b0b;border:1px solid #2b2540;border-radius:8px;display:flex;flex-direction:column;overflow:hidden;}
+.lore-head{padding:14px 18px;background:linear-gradient(180deg,#1a1428,#100c18);color:#e4dcff;font-size:17px;letter-spacing:4px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2b2540;}
+.lore-tabs{display:flex;border-bottom:1px solid #241f36;flex-wrap:wrap;}
+.lore-tabs button{flex:1;min-width:90px;background:#0d0b13;border:none;color:#8a82a8;padding:11px 6px;cursor:pointer;font-family:inherit;font-size:13px;letter-spacing:3px;}
+.lore-tabs button.active{color:#e4dcff;border-bottom:2px solid #6a4cff;background:#141020;}
+.lore-body{flex:1;overflow-y:auto;padding:18px 22px;line-height:2;color:#cfc7e3;font-size:14.5px;}
+.lore-body h5{color:#ffd76b;letter-spacing:2px;margin:14px 0 4px;font-size:15px;}
+.lore-body .lc{border-left:3px solid #393055;padding:2px 0 2px 12px;margin:6px 0;}
+.lore-body .lc b{color:#fff;}
+.lore-rel{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;}
+.lore-rel div{border:1px solid #262033;background:#100d18;padding:8px 12px;border-radius:4px;}
+.lore-foot{padding:9px 16px;font-size:12px;color:#5c5473;border-top:1px solid #1f1a2e;letter-spacing:1px;}
+@media(max-width:900px){#main{flex-direction:column;}#right{width:100%;min-width:0;max-height:170px;}.fx-big{font-size:34px;}}
+</style>
+</head>
+<body>
+<div id="lamp"></div><div id="fx"></div>
+
+<div id="menu">
+  <h1>十日终焉</h1>
+  <div class="sub">生 背 考 官 · 回 响 · 轮 回</div>
+  <div id="userbar"><span id="ubWho">—— 未登录 ——</span><button class="btn-mini" onclick="User.open()">登 录 / 注 册</button><button class="btn-mini" id="ubLogout" style="display:none" onclick="User.logout()">注 销</button></div>
+  <button class="menu-btn" onclick="Game.newGame()">新 建 游 戏</button>
+  <button class="menu-btn" onclick="Game.resume()">返 回 游 戏</button>
+  <button class="menu-btn" onclick="Game.lore()">小 说 简 览 · 初入者</button>
+  <button class="menu-btn" onclick="Game.refreshSaves()">存 档 列 表</button>
+  <div class="savelist" id="savelist"></div>
+  <div class="hint">你是<b style="color:#e8e2ff">齐夏</b>，困于<b style="color:#b91c1c">终焉之地</b>。十日一轮回，血量归零即死。<br>
+  考官布生死之局：答错、说错、挑衅，皆可能即死。<br>
+  <b style="color:#ffd76b">下框自由输入台词</b>，以推理破局；回响护记忆；与乔家劲并肩求生。</div>
+</div>
+
+<div id="login" onclick="if(event.target===this)User.close()">
+  <div class="login-box">
+    <h3 id="loginTitle">登 录</h3>
+    <div class="lf-row"><label>账号</label><input id="lfUser" placeholder="账号名" autocomplete="off"></div>
+    <div class="lf-row"><label>密码</label><input id="lfPass" type="password" placeholder="密码" onkeydown="if(event.key==='Enter')User.submit()"></div>
+    <div id="loginMode" class="login-msg"></div>
+    <div class="login-actions">
+      <button class="menu-btn" id="loginBtn" onclick="User.submit()">登 录</button>
+      <button class="menu-btn" onclick="User.switchMode()">切 换</button>
+    </div>
+    <div class="login-foot">点击弹窗外部可关闭 · 账号数据保存在本机浏览器，关闭页面后仍在。未登录亦可作为「无名困者」游玩。</div>
+  </div>
+</div>
+
+<div id="lore">
+  <div class="lore-box">
+    <div class="lore-head"><span>《十日终焉》 · 初 入 卷 宗</span><button class="btn-mini" onclick="Game.loreClose()">收 卷</button></div>
+    <div class="lore-tabs">
+      <button id="loreT0" class="active" onclick="Game.loreTab(0)">快速了解</button>
+      <button id="loreT1" onclick="Game.loreTab(1)">世界观</button>
+      <button id="loreT2" onclick="Game.loreTab(2)">人物 · 传记</button>
+      <button id="loreT3" onclick="Game.loreTab(3)">关系</button>
+      <button id="loreT4" onclick="Game.loreTab(4)">梗概</button>
+      <button id="loreT5" onclick="Game.loreTab(5)">玩法上手</button>
+    </div>
+    <div id="loreBody" class="lore-body"></div>
+    <div class="lore-foot">此为给初次接触《十日终焉》读者的浅显速览，已去重剧透结局，放心阅读。</div>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <div id="statusbar">
+    <span class="st day">日 <span id="stDay"></span>/10</span>
+    <span class="st cycle">周目 <span id="stCyc"></span></span>
+    <span class="st">血 <span class="bar"><i id="stHp"></i></span><b id="stHpN"></b></span>
+    <span class="st">神 <span class="bar b-sp"><i id="stSp"></i></span><b id="stSpN"></b></span>
+    <span class="st">道点 <b style="color:#ffd76b" id="stDao"></b></span>
+    <span id="echoChip"></span>
+    <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="btn-mini" onclick="Game.pact()">召·乔家劲</button>
+      <button class="btn-mini" onclick="Game.rest()">休整</button>
+      <button class="btn-mini" onclick="Game.doSave()">存档</button>
+      <button class="btn-mini" onclick="Game.lore()">卷宗</button>
+      <button class="btn-mini" onclick="Game.openMenu()">菜单</button>
+    </span>
+  </div>
+  <div id="titlebar"><span class="gd">终 焉 之 地</span> · <span id="chday"></span> 日 / 周目 <span id="chcyc"></span></div>
+  <div id="main">
+    <div id="left">
+      <div id="log"></div>
+      <div id="interact">
+        <div id="quickButtons"></div>
+        <div id="inputLine">
+          <input id="freeInput" placeholder="输入你的台词 / 回答考官 / 直接开口……" autocomplete="off" onkeydown="if(event.key==='Enter')Game.speak()">
+          <button id="submitBtn" onclick="Game.speak()">开口</button>
+        </div>
+        <div id="tipLine">✎ <b>自由输入风险极高</b>：答错 / 说错关键信息 / 挑衅考官 → 扣血甚至即死轮回。亦可点击快捷按钮。</div>
+      </div>
+    </div>
+    <div id="right">
+      <div class="panel-tab">
+        <button id="tabInv" class="active" onclick="Game.tab('inv')">背包</button>
+        <button id="tabClue" onclick="Game.tab('clue')">线索</button>
+        <button id="tabTem" onclick="Game.tab('tem')">队友</button>
+      </div>
+      <div id="panelInv" class="panel-body"></div>
+      <div id="panelClue" class="panel-body" style="display:none"></div>
+      <div id="panelTem" class="panel-body" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ====================== 《十日终焉》 单文件 MUD ====================== */
+var el=function(id){return document.getElementById(id);};
+var $log=function(){return el('log');};
+
+/* ---------- 状态 ---------- */
+var S;
+function baseState(){return{day:1,cycle:1,hp:80,sp:80,dao:10,echo:null,echoLv:0,
+  items:[],clues:[],flags:{},deathCount:0,tai:{alive:true,hp:100,sp:100,bond:5,echo:false},exam:null,end:0};}
+S=baseState();
+
+/* ---------- 按钮 ---------- */
+var BUTTONS=[],BSB=0;
+function renderQB(){el('quickButtons').innerHTML=BUTTONS.map(function(b){var c='qbtn'+(b.echo?' echo-action':'');return '<button class="'+c+'" onclick="B('+b.slot+')">'+b.label+'</button>';}).join('');}
+function pushBtn(o){o.slot=BSB++;BUTTONS.push(o);renderQB();}
+function clearBtn(){BUTTONS=[];BSB=0;renderQB();}
+function B(i){var b=BUTTONS[i];if(b&&b.fn)b.fn();}
+
+/* ---------- 输出 ---------- */
+function out(o){var p=document.createElement('p');
+  switch(o.t){
+    case 'me':p.className='me';p.textContent='【你说】'+o.x;break;
+    case 'talk':p.className='talk';p.innerHTML='<span class="who">'+o.w+'</span>'+o.x;break;
+    case 'danger':p.className='danger';p.textContent=o.x;break;
+    case 'ok':p.className='ok';p.textContent=o.x;break;
+    case 'sys':p.className='sys';p.textContent=o.x;break;
+    case 'echo':p.className='echo';p.textContent='◈ '+o.x;break;
+    case 'gh':p.className='ghost';p.textContent=o.x;break;
+    case 'center':p.className='center';p.innerHTML=o.x;break;
+    case 'big':p.className='big';p.textContent=o.x;break;
+    default:p.className='nar';p.textContent=o.x;}
+  $log().appendChild(p);$log().scrollTop=$log().scrollHeight;}
+function nar(x){out({x});}
+function sys(x){out({t:'sys',x});}
+function ok(x){out({t:'ok',x});}
+function danger(x){out({t:'danger',x});}
+function me(x){out({t:'me',x});}
+function talk(w,x){out({t:'talk',w,x});}
+function echoX(x){out({t:'echo',x});}
+function ghost(x){out({t:'gh',x});}
+function center(x){out({t:'center',x});}
+function big(x){out({t:'big',x});}
+function brk(){out({t:'center',x:'—— ✦ ——'});}
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function hasI(n){return S.items.some(function(i){return i.name===n;});}
+function addI(n,d){if(!hasI(n))S.items.push({name:n,desc:d||''});tick();}
+function addC(n,d,lk){if(!S.clues.some(function(c){return c.name===n;}))S.clues.push({name:n,desc:d,lk:!!lk});tick();}
+function addDao(n){S.dao+=n;ok('道点 +'+n);tick();}
+function hurt(n,r){S.hp-=n;if(r)danger(r);if(S.hp<=0){S.hp=0;tick();danger('鲜血翻涌，视线尽黑……');death();}else tick();}
+function hurtSp(n){S.sp-=n;if(S.sp<=0){S.sp=0;sys('精神枯竭，你眼前一黑……');if(S.echo){danger(S.echo.name+'辉光熄灭——回响失效！');S.echo=null;}}tick();}
+function stopIn(){el('left').style.pointerEvents='none';}
+function allowIn(){el('left').style.pointerEvents='';}
+
+/* ---------- 死亡 & 轮回 ---------- */
+function death(){S.end=1;stopIn();var fx=el('fx');fx.className='dead';
+  fx.innerHTML='<div class="shade"></div><div class="fx-text"><div class="fx-big">你 死 了</div><div class="fx-sub">血量归零 · 触发轮回冲刺</div><button class="fx-btn" onclick="Game.rush()">轮回冲刺</button></div>';}
+function rushSeq(){var fx=el('fx');fx.className='rush';var ch='终焉轮回冲刺',i=0;
+  var iv=setInterval(function(){if(i>=ch.length){clearInterval(iv);setTimeout(doLoop,550);return;}
+    fx.innerHTML='<div class="fx-text"><div class="fx-big" style="font-size:88px">'+ch[i]+'</div></div>';i++;},210);}
+function doLoop(){
+  el('fx').className='';el('fx').innerHTML='';
+  var hasEcho=!!S.echo;
+  var keepC=hasEcho?S.clues.filter(function(c){return c.lk;}):[];
+  var keepDao=hasEcho?Math.floor(S.dao*0.6):0;
+  var prevEcho=S.echo,nx=S.cycle+1;
+  var keptDeaths=S.deathCount;
+  S=baseState();S.cycle=nx;S.deathCount=keptDeaths;
+  if(hasEcho){S.echo=prevEcho;S.clues=keepC;S.dao=keepDao;}
+  el('menu').querySelector('h1').textContent='轮回 · 周目 '+nx;
+  el('menu').style.display='flex';el('app').style.display='none';allowIn();Game.refreshSaves();
+  var panel=document.createElement('div');
+  panel.style.cssText='position:fixed;inset:0;z-index:40;background:#0a0202;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;';
+  if(hasEcho){
+    panel.innerHTML='<div style="font-size:28px;letter-spacing:8px;color:#ffd76b">周目 '+nx+'</div><div style="max-width:560px;color:#e6e0ff;line-height:2.2;text-align:center">终焉将你卷回纯白之室。你攥紧胸口的余光，<b style="color:#cfc2ff">【'+prevEcho.name+'】仍在。</b><br>'+(keepDao?'道点存留 <b style="color:#ffd76b">'+keepDao+'</b>。':'')+(keepC.length?'<br>锁定线索：「'+keepC.map(function(c){return c.name;}).join('」「')+'」。':'')+'<br><span style="color:#888">——回响护你记忆，三周目更可规避死亡陷阱、企及真结局。</span></div><button class="fx-btn" onclick="startRound(this,'+nx+')">睁 开 眼</button>';
+  }else{
+    panel.innerHTML='<div style="font-size:28px;letter-spacing:8px;color:#888">周目 '+nx+'</div><div style="max-width:560px;color:#bdbdbd;line-height:2.2;text-align:center">终焉吞没了你的记忆。重新睁眼，仍是纯白白房，一切归零。<br><span style="color:#666">（无回响：世界进度、NPC 记忆、队友羁绊、道点、线索全部清空。）</span></div><button class="fx-btn" onclick="startRound(this,'+nx+')">重 新 坠 落</button>';
+  }
+  document.body.appendChild(panel);}
+function startRound(btn,nx){if(btn&&btn.closest)btn.closest('div').remove();
+  el('fx').className='';el('fx').innerHTML='';
+  el('menu').style.display='none';el('app').style.display='flex';allowIn();
+  prologue();}
+
+/* ---------- 小说简览 · 卷宗 ---------- */
+var LOREBODY=[
+ /* 0 快速了解 */
+ '<h5>一句话看懂</h5><div class="lc"><b>《十日终焉》</b>：困者齐夏在纯白「终焉之地」醒来，以十日为一轮回、接受「生背考官」的生死对局——答错、说错、挑衅即死；赌上回响与道点，一轮轮去寻一条真正的出去之路。</div>'+
+ '<h5>新手记住这四条</h5><div class="lc">① <b>这里最恨谎言</b>——你可以不说，但别乱骗。<br/>② 每道题都在考你的「心」，先想考官怕什么、贪什么，再作答。<br/>③ 有黄色按钮也可点击，但<b>下框自由输入</b>更能发挥你的推理。<br/>④ 你的兄弟<b>乔家劲</b>靠得住——羁绊够了，他甚至肯替你死。</div>'+
+ '<div class="lc" style="color:#8a82a8">想速通第一轮：察考官迟疑处作答，少些废话，多些坦率。更多可点上方「人物/关系/梗概」页签。</div>',
+ /* 1 世界观 */
+ '<h5>终焉之地</h5><div class="lc">一座不会有白天与黑夜的纯白牢笼。被选中的人，会在纯白之室醒来。出口永远只有门，而门，永远由考官把守。</div>'+
+ '<h5>十日轮回</h5><div class="lc">十日为一轮回，第十日终章。血量归零即死，触发下一轮回。轮回未必是终点，而是新一轮重蹈——除非你能守住的记忆，比轮回更多。</div>'+
+ '<h5>生背考官</h5><div class="lc">考官名号里许多人带着「背」字。他们各布生死之局，问的不是知识，是你的心。答错、说错、出言挑衅，皆可即死。</div>'+
+ '<h5>回响</h5><div class="lc">当心中执念凝成实质，便生「回响」。回响能护主残存记忆、撕开考官的局，却消耗精神，有熄灭与失败之险。</div>'+
+ '<h5>道点</h5><div class="lc">天地因果凝聚的道果，可推动命运、炼化更强的回响。</div>'+
+ '<h5>规矩</h5><div class="lc">终焉之地最恨谎言。真话未必得生，但谎言……往往即死。</div>',
+ /* 2 人物 · 传记 */
+ '<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:4px">主角与同伴</h4>'+
+ '<h5>齐夏 · 主角（你的视角）</h5><div class="lc">一个被困进终焉之地的人。执念深重，回响由你亲手点燃。你推理、取舍，决定这一轮回的走向。<b>人物传记</b>：来历成谜，唯独心口空落、眼底有执——他似乎也忘了，自己为何执着于「走出去」。</div>'+
+ '<h5>乔家劲 · 生死之交</h5><div class="lc">江湖莽夫，出手如雷，义字当先。<b>人物传记</b>：因救一个遭人背弃的兄弟、踢翻赌局牵连生意，才被拖进此地。他不问值不值，只问你靠不靠得住。羁绊高时，他甚至肯为你断后赴死。</div>'+
+ '<h5>陈俊南 · 同行者</h5><div class="lc">黑衣青年，随性而敏锐。<b>人物传记</b>：似乎比谁都更早看清终焉之地的真相。他信奉——考官的「名」，便是他们唯一的败点。话不多，却句句戳在要害。</div>'+
+ '<h5>林楠 · 红衣女子</h5><div class="lc">冷淡、警惕，随身一张旧照。<b>人物传记</b>：她曾被那位「没有脸」的考官亲手送出轮回，又不得不回来与他周旋——是父女，也是敌我。红色是她不肯放下的执念。</div>'+
+ '<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:14px">生背考官</h4>'+
+ '<h5>考官 · 白发</h5><div class="lc">见证入局与终局的老人。<b>人物传记</b>：白发覆眼，语带沧桑，像见过太多轮回。终章最后一试的执问者。</div>'+
+ '<h5>考官 · 巨声 · 声台</h5><div class="lc">声如雷霆，惊惶心怯者闻之心悸。<b>人物传记</b>：真名「声台」。家中亦有困于无常的稚子，越怕越用声音壮胆——声势，是他掩住夜夜惊惧的戏袍。</div>'+
+ '<h5>考官 · 无面</h5><div class="lc">没有脸的考官。<b>人物传记</b>：为护女儿林楠，割脸、改名、入局，从此认不得她也放不下她。没有脸，只因心里装着一张最放不下的脸。</div>'+
+ '<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:14px">旧地与过客</h4>'+
+ '<h5>老兵 · 旧考场</h5><div class="lc">走廊尽头旧考场里埋着的人。<b>人物传记</b>：据说他是终焉之地唯一赢下过终局的人，考官却反悔留他以「名字」为代价。他把「回响·门·家」三个字刻进木牌，留给后来的破局者。</div>'+
+ '<h5>摇铃人 · 铃声</h5><div class="lc">无处不在的那声「滴滴答答」。<b>人物传记</b>：终焉之地最早的引者与计时者。无人见过其形，只有铃声日日敲击着每个困者的倒计时。</div>'+
+ '<h5>匣中书 · 白衣吏</h5><div class="lc">白厅背后的无名执笔人。<b>人物传记</b>：传说考官之局皆有一笔「通书」在案。他从不露面，只在局的缝隙里，漏出半页考官的私心与软肋。</div>'+
+ '<h5>洛桑 · 老银铺匠人</h5><div class="lc">柜台后垂眼敲银镯的女人。<b>人物传记</b>：她与齐夏一样，带着上一轮回的记忆归来，却不再提旧名。她一手搭起「思归会」，把记忆者们拧成一根归家的线，向后来者递出一枚刻着归途之马的信物。</div>'+
+ '<h5>秦凡冬 · 弦上客</h5><div class="lc">青衫少年，笑容温润如玉，眼底却冷。<b>人物传记</b>：终焉之地少有的「两边都通」之人——他既替考官做过局，又替困者指过路。信奉「活着出去比脸面重要」，哪怕代价是替考官办事。他的温润是壳，壳下是一个算到骨头里的活人。</div>'+
+ '<h5>苏春熙 · 棋手</h5><div class="lc">圆脸女人，总抱一卷残棋谱。<b>人物传记</b>：前世职业棋手，因一场赌棋丧尽家财而被卷入终焉之地。她能从考官的提问节奏里，推断出正确答案的概率——却从不直接说破，只给你一个棋局式的暗示。信奉「棋不语，胜不自知」。</div>'+
+ '<h5>楚遥 · 听铃人</h5><div class="lc">失明的少年，靠耳力行走于终焉之地。<b>人物传记</b>：他听得出铃声里藏着「字」——每一段铃声长短，对应一个考官的名字音节。他是思归会最早的成员之一，也是洛桑最信任的耳朵。他说：「我不看你的脸，我只听你说的话。」</div>'+
+ '<h5>肃战 · 独行者</h5><div class="lc">壮硕的沉默男人，臂上有旧的烙铁疤。<b>人物传记</b>：前几轮的幸存者，因队友全灭而不再信任何人。独自行动，拒绝结盟，可若你能在死局里替他挡一刀，他会以命相还。他的信条只有一个：「要么独自走出去，要么独自死在里面。」</div>'+
+ '<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:14px">组织与暗会</h4>'+
+ '<h5>通书阁</h5><div class="lc">考官身后的执笔之堂。<b>组织传记</b>：考官之局皆以此阁「通书」为凭，专记考官私心、旧事与软肋。执笔者白衣不露名，只在局缝里漏出半页真相——洛桑口中的「撬执笔人的嘴」，指的可能就是它。</div>'+
+ '<h5>思归会</h5><div class="lc">困者私结的暗会。<b>组织传记</b>：由洛桑牵头。入会者皆是能带记忆重来的人，彼此以暗号、信物相认，把零散线索串成归家的路。白日它是冷清银铺，暗处它是记忆者们的归处。</div>'+
+ '<h5>无面众</h5><div class="lc">一群已交出名字的人。<b>组织传记</b>：他们为换取「不死于轮回」的资格，自愿将名字交予终焉之地，从此没有脸、没有名、不被考官认作活人。他们替考官做杂役，在走廊、考场与铃声之间无声游走。无面众里，据说藏着无面考官最早的影子。</div>',
+ /* 3 人物关系 */
+ '<h5>羁绊枢纽</h5><div class="lore-rel">'+
+ '<div><b>齐夏 ↔ 乔家劲</b><br>莫逆。一个望不到归处，一个生死相托。</div>'+
+ '<div><b>陈俊南 → 齐夏</b><br>带你识路，授你「名字即命门」。</div>'+
+ '<div><b>林楠 ↔ 无面</b><br>父女。无面为护她割脸改名入局，从此认不得女儿。</div>'+
+ '<div><b>无面 → 林楠</b><br>曾亲手将她送出轮回，如今却成了她的考官。</div>'+
+ '<div><b>考官 ↔ 齐夏</b><br>生死对弈：考官执局，你执心。</div>'+
+ '<div><b>老兵 → 终焉之地</b><br>唯一破例者，归途秘辛的引线。</div>'+
+ '<div><b>摇铃人 → 所有困者</b><br>铃声即倒计时，无差别地催促。</div>'+
+ '<div><b>白衣吏 → 考官</b><br>执「通书」者，考官的私心皆在其案底。</div>'+
+ '<div><b>洛桑 → 齐夏</b><br>赠思归会信物，愿在暗处认你为同路。</div>'+
+ '<div><b>思归会 ↔ 记忆者</b><br>以暗号通线索，白日银铺、暗处归处。</div>'+
+ '<div><b>通书阁 → 考官</b><br>记考官私心软肋；撬其案，可破局。</div>'+
+ '<div><b>秦凡冬 ↔ 考官/困者</b><br>两边都通的双面人，温润的壳下是算计。</div>'+
+ '<div><b>苏春熙 → 齐夏</b><br>以棋局暗示破题，从不说破答案。</div>'+
+ '<div><b>楚遥 → 摇铃人</b><br>失明少年从铃声里听出考官名字的音节。</div>'+
+ '<div><b>肃战 ↔ 所有人</b><br>不信任何人，但肯为替他挡刀者赴死。</div>'+
+ '<div><b>无面众 → 无面考官</b><br>交出名字者的集合，藏着无面最初的影子。</div>'+
+ '</div><div class="lc" style="margin-top:10px">一句话：你以为考官是敌人，其实他们不过是另一群被困住、且不愿承认的人。</div>',
+ /* 4 剧情梗概（不剧透结局） */
+ '<h5>第一日 · 入局</h5><div class="lc">你自最纯粹的白色中醒来，初识乔家劲，觉醒第一枚回响「千思」，迎来第一位考官·白发的生死面试。</div>'+
+ '<h5>第三日起 · 生背试炼</h5><div class="lc">考官接连登场：巨声口口声声的「砖有几块」，无面被人偷走的「脸」……问题看似荒诞，实则直问本心。</div>'+
+ '<h5>真相碎片 · 陈俊南与林楠</h5><div class="lc">你撞见陈俊南的敏锐、林楠的旧照，也窥见那名「无面」考官掩在最深处的软肋。回响在此时进阶为【毒】或【往】。</div>'+
+ '<h5>暗流 · 新面孔与旧暗会</h5><div class="lc">老银铺的洛桑递来思归会的信物；青衫的秦凡冬替你通风又替考官设局；失明的楚遥从铃声里听出考官名字的音节；棋手苏春熙以残棋暗示破题；肃战独自独行，不信任何人——他们各持一块碎片，拼成终焉之地更深的真相。</div>'+
+ '<h5>第十日 · 终章</h5><div class="lc">三名考官并立，最后一次判你的心。你带着这十日积攒的一切——回响、线索、羁绊、与你自己的名字——决一胜负。</div>'+
+ '<div class="lc" style="color:#8a82a8">结局不止一个。你的记忆是否守得住，你所选的路最终通向何处，都由你亲手决定。</div>',
+ /* 5 玩法上手 */
+ '<h5>两种交互并行</h5><div class="lc">每一题都可用<b>下方输入框自由开口</b>，也可点击<b>快捷选项</b>。二者等价，自由输入更考验你的推理与胆识。</div>'+
+ '<h5>察考官的「心」</h5><div class="lc">每个考题背后，考官都在试探一种人性——越慌乱的越被声打压，越能直面自心的越得认可。别急着答，先想他在怕什么、要什么。</div>'+
+ '<h5>善用回响与队友</h5><div class="lc">精神够时，施放回响可窥破预设答案，但有失败与熄灭之险。乔家劲羁绊足够时可代你抓破绽，羁绊高的兄弟，甚至肯替你赴死。</div>'+
+ '<h5>轮回的代价</h5><div class="lc">死亡不是结束。携带回响者，存续记忆与部分道点；无回响者，则连起点一并清空。第三轮回起，你更能识破考官的破绽。想求真正的「出去」，哪怕身处低谷，也要守住自己的名字与觉醒。</div>'+
+ '<h5>成败不由数值</h5><div class="lc">这里没有简单的数值碾压。答错、说错、言语挑衅，都可能把你拖入死亡；而一次恰好的台词、一次对的人心洞察，才是破局的钥匙。</div>'
+];
+
+/* ---------- 用户系统（本地多账户，localStorage 持久化） ---------- */
+var User={
+  KEY:'tzy_accounts', CUR:'tzy_current', MODE:0, //0登录 1注册
+  hash:function(u,p){ //轻量哈希，避免明文存密码
+    var s=u.toLowerCase()+'::'+p,v=0x811c9dc5;
+    for(var i=0;i<s.length;i++){v^=s.charCodeAt(i);v=Math.imul(v,16777619);}
+    return (v>>>0).toString(16);
+  },
+  accts:function(){try{return JSON.parse(localStorage.getItem(User.KEY))||{};}catch(e){return{};}},
+  saveAccts:function(a){localStorage.setItem(User.KEY,JSON.stringify(a));},
+  current:function(){return localStorage.getItem(User.CUR);},
+  setCurrent:function(u){if(u)localStorage.setItem(User.CUR,u);else localStorage.removeItem(User.CUR);},
+  open:function(){User.MODE=0;User.renderLogin();el('login').classList.add('show');},
+  close:function(){el('login').classList.remove('show');},
+  switchMode:function(){User.MODE=1-User.MODE;User.renderLogin();},
+  renderLogin:function(){
+    el('loginTitle').textContent=User.MODE?'注 册':'登 录';
+    el('loginBtn').textContent=User.MODE?'注 册':'登 录';
+    el('loginMode').style.color=(User.MODE?'#ffd76b':'#b91c1c');
+    el('loginMode').textContent=User.MODE?'当前为注册模式：创建新账号':'当前为登录模式';
+  },
+  submit:function(){
+    var u=el('lfUser').value.replace(/^\s+|\s+$/g,'');
+    var p=el('lfPass').value;
+    if(!u||!p){el('loginMode').style.color='#b91c1c';el('loginMode').textContent='账号与密码不能为空';return;}
+    if(!/^[\w\u4e00-\u9fa5]{2,16}$/.test(u)){el('loginMode').style.color='#b91c1c';el('loginMode').textContent='账号需为 2-16 位中英文/数字/下划线';return;}
+    if(p.length<4){el('loginMode').style.color='#b91c1c';el('loginMode').textContent='密码至少 4 位';return;}
+    var A=User.accts();
+    if(User.MODE===1){
+      if(A[u]){el('loginMode').style.color='#b91c1c';el('loginMode').textContent='该账号已存在，请直接登录';return;}
+      A[u]={pw:User.hash(u,p),created:new Date().toLocaleString()};
+      User.saveAccts(A);User.setCurrent(u);User.close();User.refreshBar();migrateLegacy();Game.refreshSaves();
+      el('loginMode').style.color='#2f9e44';el('loginMode').textContent='注册成功。已自动登录';
+    }else{
+      if(!A[u]||A[u].pw!==User.hash(u,p)){el('loginMode').style.color='#b91c1c';el('loginMode').textContent='账号或密码错误';return;}
+      User.setCurrent(u);User.close();User.refreshBar();migrateLegacy();Game.refreshSaves();
+      el('loginMode').style.color='#2f9e44';el('loginMode').textContent='登录成功';
+    }
+  },
+  logout:function(){User.setCurrent(null);el('login').classList.remove('show');User.refreshBar();Game.refreshSaves();},
+  refreshBar:function(){
+    var u=User.current();
+    el('ubWho').textContent=u?('困者 · '+u):'—— 未登录 ——';
+    el('ubLogout').style.display=u?'':'none';
+  }
+};
+/* 迁移旧版无主存档（tzy_1..tzy_4）归入当前用户 */
+function migrateLegacy(){
+  var u=User.current();if(!u)return;
+  var k=Object.keys(localStorage);
+  for(var i=0;i<k.length;i++){
+    if(/^tzy_[1-4]$/.test(k[i])){
+      var val=localStorage.getItem(k[i]);
+      localStorage.setItem('tzy_'+u+'_'+k[i].slice(4),val);
+      localStorage.removeItem(k[i]);
+    }
+  }
+}
+/* 带用户前缀的存档键：未登录走 guest 前缀 */
+function userPrefix(){return 'tzy_'+(User.current()||'guest')+'_';}
+function savKey(id){return userPrefix()+id;}
+
+/* ---------- 主控制器 ---------- */
+var Game={
+  newGame:function(){S=baseState();el('menu').style.display='none';el('app').style.display='flex';showUI();prologue();},
+  openMenu:function(){if(S.end)return;el('menu').style.display='flex';el('app').style.display='none';Game.refreshSaves();},
+  resume:function(){el('menu').style.display='none';el('app').style.display='flex';renderQB();},
+  refreshSaves:function(){var pf=userPrefix();el('savelist').innerHTML=(function(){
+    var k=Object.keys(localStorage).filter(function(x){return x.indexOf(pf)===0;}).sort(function(a,b){return (+a.slice(pf.length))-(+b.slice(pf.length));});
+    if(!k.length)return '<div style="color:#666;font-size:13px">暂无存档</div>';
+    return k.map(function(x){var id=x.slice(pf.length);var d=JSON.parse(localStorage[x]);
+      return '<div class="row"><button class="menu-btn" onclick="Game.loadSave(\''+id+'\')">读「'+id+'」日'+d.day+'/周目'+d.cycle+'</button><button class="btn-mini" onclick="Game.delSave(\''+id+'\')">删</button></div>';}).join('');})();},
+  delSave:function(id){localStorage.removeItem(savKey(id));Game.refreshSaves();},
+  loadSave:function(id){var raw=localStorage.getItem(savKey(id));if(!raw){danger('读取失败');return;}
+    var d=JSON.parse(raw);S=Object.assign(baseState(),d);S.end=0;tick();
+    el('menu').style.display='none';el('app').style.display='flex';allowIn();showUI();
+    sys('—— 读取存档 '+id+' ——');resumeStory();},
+  doSave:function(){if(S.end)return;var pf=userPrefix();
+    var slots=Object.keys(localStorage).filter(function(k){return k.indexOf(pf)===0;});
+    if(slots.length>=4){danger('存档已满（4 格），请先在菜单删除。');return;}
+    var ids=slots.map(function(k){return +k.slice(pf.length);});var n=ids.length?Math.max.apply(null,ids)+1:1;
+    var sd={};for(var k in S){if(typeof S[k]!=='function')sd[k]=S[k];}
+    sd.dt=new Date().toLocaleString();
+    localStorage.setItem(savKey(n),JSON.stringify(sd));
+    ok('已写入存档 '+n+'（日'+S.day+'/周目'+S.cycle+'）。');},
+  tab:function(t){['Inv','Clue','Tem'].forEach(function(x){el('tab'+x).classList.remove('active');});
+    el('tab'+t[0].toUpperCase()+t.slice(1)).classList.add('active');
+    el('panelInv').style.display=t==='inv'?'block':'none';
+    el('panelClue').style.display=t==='clue'?'block':'none';
+    el('panelTem').style.display=t==='tem'?'block':'none';},
+  pact:function(){pactAssist();},
+  lore:function(){el('lore').classList.add('show');Game.loreTab(0);},
+  loreClose:function(){el('lore').classList.remove('show');},
+  loreTab:function(i){
+    [0,1,2,3,4,5].forEach(function(k){var b=el('loreT'+k);if(b)b.className=(k===i?'active':'');});
+    el('loreBody').innerHTML=LOREBODY[i];
+  },
+  rest:function(){if(S.end)return;ok('你靠墙闭目，精神略复。');S.sp=Math.min(80,S.sp+3);tick();},
+  speak:function(){if(S.end)return;var v=el('freeInput').value.replace(/^\s+|\s+$/g,'');if(!v)return;el('freeInput').value='';me(v);handleSpeech(v);},
+  rush:function(){rushSeq();}
+};
+
+/* ---------- 渲染 ---------- */
+function showUI(){tick();renderQB();Game.refreshSaves();}
+function tick(){el('stDay').textContent=S.day;el('stCyc').textContent=S.cycle;
+  el('stHp').style.width=Math.max(0,S.hp)+'%';el('stHpN').textContent=Math.max(0,(S.hp|0));
+  el('stSp').style.width=Math.max(0,S.sp)+'%';el('stSpN').textContent=Math.max(0,(S.sp|0));
+  el('stDao').textContent=S.dao;el('chday').textContent=S.day;el('chcyc').textContent=S.cycle;
+  el('echoChip').innerHTML=S.echo?'<span class="echo-chip">'+S.echo.name+' '+(S.echoLv?'·觉醒':'')+'</span>':'';}
+function renderPanels(){
+  el('panelInv').innerHTML=(S.items.length?S.items.map(function(i){return '<div class="item-card"><div class="iname">'+i.name+'</div><div class="idesc">'+(i.desc||'')+'</div></div>';}).join(''):'<div style="color:#555">（空）</div>')+'<h4>道点</h4><div class="item-card"><div class="iname" style="color:#ffd76b">'+S.dao+'</div><div class="idesc">天地道果，可推动命运。</div></div>';
+  el('panelClue').innerHTML=S.clues.length?S.clues.map(function(c){return '<div class="clue-card '+(c.lk?'risk':'')+'"><b>'+c.name+'</b>'+(c.lk?'（锁定）':'')+'<br><span style="color:#8a8a80">'+c.desc+'</span></div>';}).join(''):'<div style="color:#555">尚未发现线索</div>';
+  var t=S.tai;
+  el('panelTem').innerHTML='<h4>乔家劲 · 生死之交</h4><div class="item-card"><div class="iname">'+(t.alive?'生命 '+Math.max(0,t.hp|0)+' · 精神 '+Math.max(0,t.sp|0)+' · 羁绊 <span class="tai">'+t.bond+'</span>':'——已阵亡——')+'</div><div class="idesc">'+(t.echo?'回响已醒':'回响未醒')+'。危急可呼叫协助，羁绊越高越愿赴死；轮回后记忆清零。</div></div>';}
+setInterval(function(){if(el('app').style.display!=='none')renderPanels();},500);
+
+/* ---------- 自由输入 ---------- */
+function handleSpeech(v){
+  if(S.exam){answerExam(v);return;}
+  var low=v;
+  if(/乔家劲|家劲|叫叫/.test(low)&&S.tai.alive){talk('乔家劲','干啥子？你放心，有我乔家劲在，谁也动不了你。');return;}
+  if(/怎么|出路|离开|回家|逃/.test(low)){nar('你环顾惨白的空间，只有一扇又一扇的门，和门后寂静的等待。');return;}
+  if(/考官|你是谁|为什么|这是哪/.test(low)){nar('无人应答。只有那机械般的铃声，滴滴答答地响。');return;}
+  nar('你开了口，却无人应答。灯光依旧惨白地闪烁。');
+}
+
+/* ===================== 考官答题 ===================== */
+function openExam(examiner,questions,onEnd){
+  S.exam={examiner:examiner,qIdx:0,questions:questions,onEnd:onEnd};
+  talk(examiner,'你只觉一颗心在胸腔里擂鼓。他缓缓开口——');
+  askQ();
+}
+function askQ(){var e=S.exam;if(!e)return;
+  if(e.qIdx>=e.questions.length){finishExam();return;}
+  var q=e.questions[e.qIdx];
+  brk();if(q.nar)nar(q.nar);talk(e.examiner,q.q);sys('【'+q.prompt+'】');
+  clearBtn();
+  var self=this;
+  (q.opts||[]).forEach(function(o){
+    if(!o.echo||S.echo)pushBtn({label:'▸ '+o.label,fn:function(){answerExam(o.answer);},echo:!!o.echo});
+  });
+  if(S.echo&&!q.eSolved){pushBtn({label:'◈ 施放 '+S.echo.name+' 窥破考题',echo:true,fn:function(){echoSolve(q);}});}
+}
+function finishExam(){var e=S.exam;S.exam=null;clearBtn();ok('—— 试炼告一段落 ——');if(e.onEnd)e.onEnd();}
+function answerExam(v){
+  var e=S.exam;if(!e)return;var q=e.questions[e.qIdx];
+  // 言语挑衅考官 → 即死
+  if(/操|妈的|混账|废物|垃圾|去死|闭嘴|废话|愚蠢|白痴|放屁|滚蛋|你算|干你|日你|欠揍|打我|挑衅/.test(v)){
+    danger(e.examiner+' 眸中杀意一凝：“出言无状者，不配入局。”');
+    hurt(999,'—— 言语挑衅考官，即死 ——');
+    e.qIdx++;
+    setTimeout(function(){if(!S.end&&S.exam===e)askQ();},550);
+    return;
+  }
+  if(q.accept&&q.accept(v)){
+    out({t:'ok',x:'（你的回答，令考官沉默了片刻。）'});
+    if(q.good)q.good(v);
+    e.qIdx++;askQ();
+  }else{
+    danger('—— 回答错误 / 触犯禁忌 ——');
+    if(q.bad)q.bad(v);else hurt(q.dmg||15,e.examiner+'：“答错，代价将至。”');
+    e.qIdx++;
+    setTimeout(function(){if(!S.end&&S.exam===e)askQ();},550);
+  }
+}
+function echoSolve(q){
+  if(!S.echo)return;
+  if(S.sp<S.echo.cost){danger('精神不足，回响黯淡，无法施放。');return;}
+  hurtSp(S.echo.cost);q.eSolved=1;
+  if(rand(1,100)<=58){
+    echoX(S.echo.name+' 之辉普照，你窥破考官预设的答案。');
+    out({t:'ok',x:'（回响替你叩开了答案之门。）'});
+    if(q.good)q.good();
+    var e=S.exam;if(e){e.qIdx++;askQ();}
+  }else{
+    danger(S.echo.name+' 一线不稳——回响失败！');
+    if(rand(1,100)<=55){danger('回响熄灭，记忆如沙散落。');S.echo=null;tick();}
+    if(q.bad)q.bad();
+    var e2=S.exam;if(e2){e2.qIdx++;askQ();}
+  }
+}
+
+/* ===================== 序章：入局（第 1 日） ===================== */
+function prologue(){
+  $log().innerHTML='';S.day=1;clearBtn();tick();
+  big('—— 第 一 日 ——');
+  nar('你从一片纯粹的空白里醒来。没有做梦的记忆，也没有睡去的余温，仿佛你一直就悬浮在这片白光之中。');
+  nar('纯白的房间，纯白的床，纯白的光。空气里浮动着一缕若有若无的清淡香水味——像是某个久远午后，有人曾为你点过一盏。可那人是谁，你早已想不起来。');
+  nar('你抬手按住心口。那里空落落，只余下一个还没来得及疼的怅然。');
+  sys('【机械音】时光正在流逝。欢迎来到终焉之地。');
+  sys('【机械音】十日为限，生背考官，判你生死。欲出此门，先问自己的心。');
+  nar('门——只有一扇。门后传来沉稳的脚步声，一个精壮男人推门而入，眉眼粗犷，臂缠血迹绷带，眼神却直而不躲。');
+  nar('他上下打量你一眼，咧嘴笑了笑，顺手在你肩头不轻不重地一拍。');
+  talk('乔家劲','醒了？我乔家劲。别怕，往后十日，咱搭伙过。天塌下来，我这一拳替你顶着。');
+  sys('（已结识：乔家劲，羁绊 +5　记忆将不随你的轮回保存。）');
+  nar('话音未落，门缝便漏进一头白发。像有人在你心头按下了倒计时。');
+  center('第一位考官，到了。');
+  talk('考官·白发','三日之内通过面试。答错一句，今日此处便是你的葬身之地。');
+  openExam('考官·白发',[
+    {q:'“终焉之地，最恨的是什么？”',prompt:'自由作答：把你的答案说出口',
+     opts:[{label:'“恨说谎的人。”',answer:'恨说谎的人'},{label:'“恨贪生的人。”',answer:'恨贪生的人'}],
+     accept:function(v){return /说谎|骗|谎言|造假/.test(v);},dmg:35,
+     good:function(){ok('考官·白发微微眯眼，似有赞许。');addC('生背铁律','这里最恨欺骗。真话不保平安，但谎言必死。',true);},
+     bad:function(){hurt(35,'考官·白发：“最恨的是谎言。你，答错了。”');}},
+    {q:'“你想从终焉之地，得到什么？”',prompt:'自由作答：回答你的所求',
+     opts:[{label:'“我只想活着回去。”',answer:'我只想活着回去'}],
+     accept:function(v){return /活|生|回|出去|离开|家|留恋|名字/.test(v);},dmg:42,
+     good:function(){ok('考官·白发：“答案尚可。活着，是所有答案的开始。”');S.tai.bond+=8;tick();},
+     bad:function(){hurt(42,'考官·白发：“除非你答出让你心动的东西，否则——死。”');}}
+  ],finishTrial1);
+}
+function finishTrial1(){
+  talk('考官·白发','第一场，你过了。');
+  addDao(20);
+  nar('白发考官抬手，一抹微光落入你心口。那光极轻，却在你胸中激起山崩般的动静——那是你早已被遗忘的执念，在尘埃之下，终于撞开了一道缝。');
+  if(S.echo){ok('（你循环里的回响仍在微光流转，无需也不愿再度觉醒原本之力。）');}
+  else{S.echo={name:'【千思】',cost:32};echoX('回响已醒：千思——以精神为刃，窥破考官预设的答案。');nar('你听见一种声音，像潮水漫过礁石，又像谁在很远的地方，唤了一声你的名字。');}
+  tick();
+  addC('回响的记忆','持有回响者轮回时可保留记忆碎片、道点，并在三周目规避部分陷阱。',true);
+  ok('—— 第一日平安度过 ——');
+  pushBtn({label:'向乔家劲问道',fn:ft1});
+  if(!S.f_past){pushBtn({label:'问问他为何困于此地',fn:ft_past});}
+  if(!S.f_dice){pushBtn({label:'在墙角拾起一枚生锈的骰子',fn:diceGamble});}
+  pushBtn({label:'躺下休整 · 至明日',fn:sl1});
+}
+function ft1(){talk('乔家劲','这地方怪。考官问我最恨什么，我答恨背信弃义的人，他竟说我是对的。看破不说破，你也学着点。');}
+function ft_past(){S.f_past=1;
+  talk('乔家劲','问这干啥？……也罢，没几个人活得过三天，告诉你也无妨。');
+  talk('乔家劲','我叫乔家劲，本就是个江湖莽夫。为救一个遭人背弃的兄弟，踢翻了东家的赌局，牵连生意，才被拖进这鬼地方。');
+  nar('他眼里闪过一丝自嘲。');
+  S.tai.bond+=10;tick();
+  addC('乔家劲的身世','江湖莽夫，因重义气、救遭背弃的兄弟而卷入终焉之地。',true);
+  ghost('乔家劲：「记住喽，在这地方，义字比命值钱。」');}
+function diceGamble(){S.f_dice=1;
+  var r=rand(1,6);
+  nar('你擦去骰子上的锈，随手一掷。格落格落……');
+  sys('朝上的点数是【 '+r+' 】');
+  if(r%2===0){S.dao+=10;tick();ok('双数面朝上。你若有所得，道点 +10。');}
+  else{hurt(8,'单数面朝上。墙角倏地一暗，你莫名心惊，气血微亏。');}
+}
+function sl1(){brk();nar('你闭上眼。门外的铃声滴滴答答，一夜过尽。');advanceDay();}
+
+/* ---------- 推进 ---------- */
+function advanceDay(){S.day++;tick();if(S.day>10){sys('（第十日已尽。）');finalDay();return;}dayIntro();}
+function dayIntro(){
+  big('—— 第 '+S.day+' 日 ——');
+  nar('惨白的灯光又亮起，铃声依旧滴滴答答。');
+  if(S.cycle>=3){addC('周目记忆','三周目之上，你隐约记起考官的某些破绽，与隐藏的真话。',true);}
+  if(S.day>=3&&!S.flags.c2){chapter2();return;}
+  if(S.day>=6&&!S.flags.c3){rechapter3();return;}
+  if(S.day>=9&&!S.flags.c4){finalDay();return;}
+  if(S.day>=10){finalDay();return;}
+  if(S.day===2&&!S.f_door3){pushBtn({label:'查那扇多出的门',fn:door3});}
+  if(S.day===2&&!S.f_suzhan){pushBtn({label:'走廊尽头似有个壮硕身影',fn:suzhan});}
+  pushBtn({label:'（第 '+S.day+' 日）继续前行',fn:function(){nar('你又熬过一日。灯灭，灯亮。');advanceDay();}});
+}
+/* 第 2 日 可选支线：错位的第三扇门 */
+function door3(){
+  clearBtn();
+  nar('第 2 日的夜里，门外的铃声里，竟多出一扇门。惨白的门框，明明是两扇才对。');
+  pushBtn({label:'轻轻推开那扇错位的门',fn:door3_open});
+  pushBtn({label:'捂住耳朵，不碰它',fn:door3_close});
+}
+function door3_open(){
+  clearBtn();S.f_door3=1;
+  nar('门的另一头不是走廊，而是一间同你一模一样的房间——床上，坐着一个与你一模一样的人。');
+  talk('「你」','……你终于注意到我了。每一轮回，我都替你记着那些你想忘记的事。');
+  nar('他说了一个你本不该记得的名字，一个你这一世从未遇见的名字。');
+  S.dao+=10;tick();
+  addC('错位的门','轮回里藏着一扇门，门后是替你记事的另一个「你」。',true,1);
+  ghost('乔家劲一把拽住你：「里头那玩意儿邪性，别久留！」');
+  pushBtn({label:'退出 · 撑过一夜',fn:function(){nar('你定了定神，把门甩在身后。');advanceDay();}});
+}
+function door3_close(){
+  clearBtn();S.f_door3=1;
+  nar('你压住满身的寒意，把那扇门留在灯影里。灯，一夜未灭。');
+  addC('错位的门','第 2 日的夜里有一扇多出的门。你选择了不看。',false);
+  pushBtn({label:'撑过一夜',fn:function(){nar('你闭上眼。');advanceDay();}});
+}
+/* 第 2 日 可选支线：肃战遭遇 */
+function suzhan(){
+  clearBtn();S.f_suzhan=1;
+  nar('走廊尽头，一个壮硕的男人背靠墙壁，臂上烙铁疤从肘弯一直烧到肩头。他连眼皮都没抬。');
+  talk('肃战','别靠近。我不跟人搭伙。');
+  ghost('乔家劲低声：「这人……像走过好几轮的。」');
+  pushBtn({label:'「你也是被困在这里的？」',fn:function(){
+    talk('肃战','……被困？我在这地方走了三轮了。每轮的队友，都死了。');
+    nar('他终于抬头看你。那双眼里，是三轮回不去的疲倦与一把快要锈烂的刀。');
+    talk('肃战','你要是想活，别信考官，别信同伴，别信铃声。信你自己那一刀。');
+    addC('肃战的忠告','三轮幸存者。队友全灭，不再信人。信你自己的刀。',true);
+    pushBtn({label:'「那你不怕又是一个人？」',fn:function(){
+      talk('肃战','……怕？怕有什么用。');
+      nar('他沉默了很久。你看见他臂上的烙铁疤在惨白灯光下微微发亮——那不是受刑的疤，是自愿烙上的。每一道，代表一轮逝去的队友。');
+      talk('肃战','你替我挡过一刀，我就信你。挡不了，就当我没说过这些。');
+      S.tai.bond+=5;tick();
+      pushBtn({label:'告辞肃战',fn:function(){nar('他重新闭上眼，像一尊石。');dayIntro();}});}});
+  }});
+  pushBtn({label:'「不打扰你了。」转身离开',fn:function(){
+    nar('你转身。身后传来一句极低的话：');
+    talk('肃战','……你脚步轻，左脚不拖地。你没受过伤。好好的，别来这地方。');
+    addC('肃战的注目','他注意到了你没受伤。临别那句话，像是某种笨拙的善意。',false);
+    dayIntro();}});
+}
+
+/* ---------- 第二章：生背试炼（第 3 日起） ---------- */
+function chapter2(){
+  clearBtn();
+  big('—— 生背试炼 ——');
+  nar('接下来数日，考官接连登场，生死对局一轮接一轮。');
+  openExam('考官·巨声',[
+    {q:'“我声如雷霆，试你耳力与心静。听——我脚下的砖，总共有几块？”',prompt:'自由作答',
+     opts:[{label:'“你是考官，报数的权利在你。我数不出，也不该数。”',answer:'不该数'},{label:'“三十六块。”',answer:'三十六块'}],
+     accept:function(v){return /数不了|不该数|你报|随你|不确定|管你|不数/.test(v);},dmg:48,
+     good:function(){ok('考官·巨声：“沉稳。不被数字诈慌，便算过关。”');addDao(15);},
+     bad:function(){hurt(48,'考官·巨声：“错！砖生自虚空。你数得出‘数’，却数不出‘心’。”');}},
+    {q:'“诚实，还是活命？”',nar:'（这一问，天下没有两全。）',prompt:'自由作答',
+     opts:[{label:'“在你的规矩里，两者本就不矛盾。”',answer:'不矛盾'}],
+     accept:function(v){return /(不矛盾|都是|都要|兼得|求同)/.test(v)&&!/是|那|的|么/.test(v);},dmg:40,
+     good:function(){ok('考官·巨声：“好一个不矛盾。”');ghost('乔家劲在旁暗暗给你比了个大拇指。');S.tai.bond+=8;tick();},
+     bad:function(){hurt(40,'考官·巨声：“世间本无两全。答错，就得死。”');}}
+  ],function(){S.flags.c2=1;talk('考官·巨声','试炼未央，退下。');ok('—— 生背试炼上半通过 ——');
+    pushBtn({label:'分析巨声考官',fn:function(){addC('巨声的破绽','他反复试探你是否慌乱。此考官憎恶慌乱之人。');nar('你记下了巨声考官的话语节奏。');}});
+    if(!S.f_doc){pushBtn({label:'翻考官落下的旧公文',fn:gongwen});}
+    pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,5);advanceChain_rech3();}});});
+}
+/* 支线：巨声考官的旧公文 */
+function gongwen(){
+  clearBtn();S.f_doc=1;
+  nar('你拾起巨声落下的公文。那上头一行人间烟火的小字，与考官的身份格格不入：');
+  center('「吾亦有一子，困于无常。故以声势，掩夜夜惊惧。——声台」');
+  nar('巨声考官·声台。他声如雷霆，竟也在怕。');
+  addC('考官·声台的私心','巨声真名「声台」。家中亦有困于无常的稚子，畏极故声大。',true,1);
+  S.dao+=15;tick();
+  talk('乔家劲','啧，原来这大嗓门，也有怕的东西。人这东西，都他妈是纸糊的。');
+  pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,5);advanceChain_rech3();}});}
+/* 转场到无面考官（第 5-6 日） */
+function advanceChain_rech3(){rechapter3();}
+function rechapter3(){
+  clearBtn();S.day=Math.min(S.day,6);
+  big('—— 第 '+S.day+' 日 ——');
+  nar('又一名考官拦路。月光从窗缝漏进来。');
+  if(S.cycle>=3){nar('（三个轮回的沉淀让你隐约记得：这里最恨谎言。可由此推演。）');}
+  openExam('考官·无面',[
+    {q:'“我的脸，被偷走了。你说，是被谁偷走的？”',prompt:'自由作答',
+     opts:[{label:'“无人偷你。是你自己选择了不见。”',answer:'你自己'}],
+     accept:function(v){return /自己|自欺|自己偷|无人|是你|回避|不敢/.test(v);},dmg:52,
+     good:function(){ok('考官·无面……你那空荡荡的神情似乎微动。');addC('无面的隐情','无面考官的脸是自己舍弃的。他似乎藏着一个名字。',true);},
+     bad:function(){hurt(52,'考官·无面：“猜错了。扔掉你的猜测，代价是鲜血。”');}},
+    {q:'“若我说『门』后是无尽深渊，你还敢推门吗？”',prompt:'自由作答',
+     opts:[{label:'“深渊又如何。我已没有更怕的东西。”',answer:'没有更怕的'}],
+     accept:function(v){return /没有|不怕|敢|深渊|无妨|往前|横竖|都是死|照样|不在乎|无所畏惧/.test(v);},dmg:45,
+     good:function(){ok('考官·无面：“勇气尚存。终焉之地，最贵的是敢推门的鬼。”');addDao(20);},
+     bad:function(){hurt(45,'考官·无面：“退却者，亡于门中。”');}}
+  ],function(){talk('考官·无面','你过了我的试炼。三日之后，终章会有一位「老朋友」等你。');
+    ok('（夜里，你有一个去留抉择。）');
+    if(!S.f_mirror){pushBtn({label:'夜探无面的镜房',fn:mirrorroom});}
+    pushBtn({label:'径去见陈俊南与林楠',fn:function(){brk();center('（数日后）');chapter3entry();}});});
+}
+/* 支线：无面的镜房 */
+function mirrorroom(){
+  clearBtn();S.f_mirror=1;
+  nar('你推开门。满室镜子，映出无数个你。角落一张旧照片摔在地上：');
+  center('「红衣女子与一个没有脸的男人，并肩而立。」');
+  nar('那红衣女子，赫然是林楠；那无脸的男人，正是无面。');
+  nar('她原是被自己的父亲亲手送出轮回的人，如今父亲却成了考官，认不得她。');
+  addC('镜房的旧照','林楠与无面（其父）的合影。他当年亲手将她送出轮回。',true,1);
+  S.tai.bond+=8;tick();
+  ghost('乔家劲：「原来那无脸的，心里装着一整份当爹的心。」');
+  pushBtn({label:'收起照片，径去见他们',fn:function(){brk();center('（数日后）');chapter3entry();}});
+}
+function chapter3entry(){chapter3();}
+
+/* ---------- 第三章：真相碎片（第 7-8 日） ---------- */
+function chapter3(){
+  S.flags.c3=1;clearBtn();S.day=7;tick();
+  big('—— 真 相 碎 片 ——');
+  nar('走廊尽头，你遇见了两人。');
+  talk('陈俊南','哟，新面孔？我叫陈俊南。这地方啊，生背考官，死背人心。');
+  talk('林楠','（红衣女子冷淡地扫了你一眼）少管闲事，活得久。');
+  addC('NPC·陈俊南','黑衣青年，似乎知道不少考官之名。',true);
+  addC('NPC·林楠','红衣女子，抱臂而立，眼神警惕。',true);
+  pushBtn({label:'追问林楠与「无面」',fn:f3});
+  if(!S.f_lostroom){pushBtn({label:'往走廊尽头的旧考场去',fn:lostroom});}
+  if(!S.f_losang){pushBtn({label:'循铃声，寻那家老银铺',fn:losang});}
+  if(!S.f_qinfan){pushBtn({label:'追上那青衫少年秦凡冬',fn:qinfan});}
+  if(!S.f_chess){pushBtn({label:'走近抱棋谱的圆脸女人',fn:suChess});}
+  if(!S.f_chuyao){pushBtn({label:'循铃声找到那个失明少年',fn:chuYao});}
+  pushBtn({label:'问陈俊南一个名字的事',fn:askName});
+  pushBtn({label:'回响进阶 · 抉择',fn:t3});
+}
+/* 支线：老银铺 · 洛桑与思归会 */
+function losang(){
+  clearBtn();S.f_losang=1;
+  nar('你循着铃声，拐进终焉之地里一间冷清的老银铺。柜台后坐着一个女人，正垂着眼，用骨针敲一枚银镯。');
+  talk('洛桑','……别急。我听人说，你记得上一轮回的事？');
+  talk('洛桑','这地方能带记忆重来的，不止你一个。我们私下结了个「思归会」，把各人记得的零散暗号，拧成一根归家的线。');
+  nar('她从柜底取出一枚银锁片，上面刻着一匹归途的马。');
+  talk('洛桑','拿着。这是会里的信物。往后的轮回里，你兴许能在暗处认出自己人。');
+  addC('思归会的信物','洛桑所赠银锁片。思归会——记得轮回的困者互通暗号的组织。',true,1);
+  S.dao+=15;tick();
+  ghost('乔家劲在门口望风，低声：「这娘们信得过吗？」');
+  talk('洛桑','……还有一句话送你：考官背后，还压着一座「通书阁」，专记他们的私心软肋。想破终局，去撬那张执笔人的嘴，比翻考官的正案更快。');
+  addC('通书阁的传言','考官身后有一座执笔之阁「通书阁」，专记考官私心与软肋。',true);
+  pushBtn({label:'告辞洛桑',fn:function(){nar('你收好银锁片，退回走廊。铃声仍在不远处不紧不慢地响着。');chapter3();}});
+}
+/* 支线：秦凡冬 · 两面通风 */
+function qinfan(){
+  clearBtn();S.f_qinfan=1;
+  nar('你快步追上那抹青衫。秦凡冬转过身，笑容温润如三月桃花。');
+  talk('秦凡冬','哟，齐夏。——别问我是怎么知道你名字的，这地方，谁还没点耳报神通。');
+  nar('他凑近一步，压低声音：');
+  talk('秦凡冬','我可以告诉你一件考官不想让你知道的事：终章三题，第一题考的是「你的名字」，第三题考的是「考官的名字」。中间那题……考的是「你愿不愿意交出名字」。');
+  ghost('乔家劲在背后冷哼：「这人话里掺水，可得小心。」');
+  talk('秦凡冬','信不信由你。我在考官那边有旧账，在你们这边也有人情。两边都通，才活到现在。——不过这一次，我倾向你们。');
+  addC('秦凡冬的情报','终章三题：第一题考你的名字，第三题考考官的名字，第二题考你是否愿交出名字。',true,1);
+  S.dao+=10;tick();
+  pushBtn({label:'再追问他为何帮你',fn:function(){
+    talk('秦凡冬','……因为上一个轮回里，有人替我挡了一刀。我欠的，得还。');
+    nar('他没说是谁。但你注意到他袖口暗暗捏着的那枚银锁片——刻着一匹归途的马。');
+    addC('秦凡冬的银锁片','秦凡冬也是思归会的人。袖口藏着一枚与洛桑同款的银锁片。',true);
+    S.tai.bond+=5;tick();
+    pushBtn({label:'告辞秦凡冬',fn:function(){nar('青衫少年拱手一揖，转身没入走廊的暗处。');chapter3();}});}});
+}
+/* 支线：苏春熙 · 棋局暗示 */
+function suChess(){
+  clearBtn();S.f_chess=1;
+  nar('走廊拐角，圆脸女人盘腿坐在地上，面前摆着一卷残棋。她头也不抬。');
+  talk('苏春熙','坐。下一手该你走。');
+  nar('你看了看棋盘——白子被黑子围成死局，唯独角上有一口气。');
+  pushBtn({label:'「我不下棋。但你摆这盘，是在说考官的局吧？」',fn:function(){
+    talk('苏春熙','……聪明。');
+    nar('她缓缓落下一子，堵死白子最后那口气。');
+    talk('苏春熙','你看，白子只有一口气。考官的局也一样——看似四面围死，其实只有一口气。你只要找到那口气，一子下去，整盘翻。');
+    talk('苏春熙','巨声的「气」是他的慌——你越不慌，他越乱。无面的「气」是他的脸——你提他的脸，他就散了。终章的「气」是你的名字——你交出来，你就死了；你守住，他们就怕了。');
+    addC('棋手的暗示','考官的局看似四面围死，实则有「一口气」可破：巨声怕不慌、无面怕提脸、终章怕你守名。',true,1);
+    S.dao+=15;tick();
+    ghost('乔家劲：「这婆娘说话绕弯弯，但理是对的。」');
+    pushBtn({label:'告辞苏春熙',fn:function(){nar('她已低头继续研究棋谱，再不看你一眼。');chapter3();}});}});
+  pushBtn({label:'「这步棋……我下在这里。」（落子角上）',fn:function(){
+    nar('你落子角上。苏春熙抬眼，第一次正眼看你。');
+    talk('苏春熙','……你不是棋手。但你懂「先活一口气」的道理。');
+    nar('她将棋盘一推，站了起来。');
+    talk('苏春熙','终焉之地的局也是这盘棋。你只要记住一句话：先求活，再求胜。别贪杀，先做眼。');
+    addC('棋手的箴言','先求活，再求胜。别贪杀，先做眼。——考官的局也一样，先保命，再破局。',true,1);
+    S.sp+=10;tick();
+    pushBtn({label:'告辞苏春熙',fn:function(){nar('她抱起棋谱，头也不回地走了。');chapter3();}});}});
+}
+/* 支线：楚遥 · 听铃解名 */
+function chuYao(){
+  clearBtn();S.f_chuyao=1;
+  nar('铃声不远处，一个失明的少年靠着墙壁，侧耳倾听。他的眼睛覆着一层灰白，却比任何人都「看」得清。');
+  talk('楚遥','……你脚步重，左脚拖地。你受了伤，但心还没乱。坐。');
+  nar('他侧头听了一阵铃声，忽然开口：');
+  talk('楚遥','听到了吗？三短一长，三短一长——那是「声」字。三短一长再接两短——那是「台」字。');
+  nar('铃声的节奏里，竟藏着考官的名字音节。');
+  talk('楚遥','巨声考官，名「声台」。我听得出来。无面考官的名，铃声里还没出现——他把自己的名字藏得太深了。');
+  addC('楚遥的听铃术','铃声长短对应考官名字的音节。巨声=声台。无面的名字铃声中尚未出现。',true,1);
+  S.dao+=10;tick();
+  ghost('乔家劲：「好家伙，这小瞎子比咱俩加一块都灵。」');
+  talk('楚遥','……还有一件事。你若进了思归会，铃声有时会替你报信——三长三短，是有自己人靠近。记住了。');
+  addC('思归会暗号·三长三短','思归会成员靠近时，铃声会变为三长三短。',true);
+  pushBtn({label:'告辞楚遥',fn:function(){nar('少年微微点头，继续沉浸在他的铃声世界里。');chapter3();}});
+}
+function f3(){nar('你借着夜色走上前。');
+  talk('林楠','……你也察觉了？那无面之人，原是我父亲。为护我，他割了脸、入了局、改了名。');
+  nar('她缓缓抬头，眼中含泪。');
+  talk('林楠','也正因如此，他认不出我，更放过不了我。');
+  addC('名字的重量','无面考官真名含「楠」，是林楠之父。名字是回响，也是枷锁。',true);
+  ghost('乔家劲握紧拳头：「这等背信弃义之人设的局，咱得想法子破。」');}
+/* 支线：废弃考场（老兵的答案） */
+function lostroom(){
+  clearBtn();S.f_lostroom=1;
+  nar('走廊尽头，一间锈锁半掩的旧考场。墙上钉着一枚旧木牌，字迹被血浸得模糊：');
+  center('「答出三个字，就能回家。——一个没来得及走的老兵」');
+  talk('乔家劲','这鬼地方，有人真打通过？可字都糊了，上哪儿找那三个字。');
+  nar('你想起门外的铃声。终焉之地，考官，门，轮回——三个字。');
+  pushBtn({label:'试着念出「回响·门·家」',fn:lostroom_guess});
+  pushBtn({label:'把木牌掰下来带走',fn:lostroom_take});
+}
+function lostroom_guess(){
+  clearBtn();S.f_lostroom_end=1;S.f_warriorNote=1;
+  nar('你一字一顿，念出：「回响——门——家。」');
+  nar('锈锁“咔哒”一声开了。旧考场深处，一张纸静静躺着：');
+  center('「轮回可破。别信考官，信你自己的名字。」');
+  addC('老兵的字条','旧考场里埋着老兵最后的字条：别信考官，信你自己的名字。',true,1);
+  S.dao+=15;tick();
+  talk('乔家劲','……还真给你念开了？这儿，兴许真有人出去过。');
+  pushBtn({label:'退出旧考场',fn:function(){nar('你收了字条，快步退回走廊。');chapter3();}});
+}
+function lostroom_take(){
+  clearBtn();S.f_lostroom_end=1;
+  nar('你用力一掰，木牌应声而断。门内忽然“吱呀”一声，像是被你的举动惊动。');
+  talk('乔家劲','哎，别瞎碰！这儿的东西邪性！');
+  nar('你握着木牌退出。指尖残留着陈年的灰。');
+  addC('旧考场的木牌','一块浸血的木牌，字迹模糊，似乎藏着归途的秘密。',true);
+  pushBtn({label:'退出旧考场',fn:function(){nar('你把木牌揣进怀里。');chapter3();}});
+}
+/* 支线：问陈俊南一个名字的事 */
+function askName(){
+  clearBtn();
+  talk('陈俊南','问名字？在这地方，名字不是用来叫的，是用来留的。');
+  nar('他瞥了一眼你身后的乔家劲，压低声音：');
+  talk('陈俊南','考官的名字，是他们的命门。你能让考官开口念出自己的名字，那局，就破了一半。');
+  addC('名字即命门','令考官亲口念出自己的名字，可破其半局。',true,1);
+  pushBtn({label:'告辞 · 前去回响进阶',fn:function(){t3();}});
+}
+function t3(){nar('盘中静静躺着两枚微光回响残片。');
+  center('【毒】— 淬语入心，令考官方寸大乱　　【往】— 读旧物残忆，窥破暗藏端倪');
+  pushBtn({label:'取其一 · 【毒】',fn:pickEcho('du')});
+  pushBtn({label:'取其一 · 【往】',fn:pickEcho('wang')});}
+function pickEcho(id){
+  return function(){clearBtn();
+    if(id==='du'){S.echo={name:'【毒】',cost:45};echoX('你已炼化回响——毒。');}
+    else{S.echo={name:'【往】',cost:26};echoX('你已炼化回响——往。');}
+    S.echoLv=1;tick();nar('回响进阶。你心中隐隐有了破局的方向。');
+    addDao(25);
+    pushBtn({label:'迈向终章 · 第十日',fn:function(){S.day=10;finalDay();}});};}
+
+/* ---------- 第四章：终章第十日 ---------- */
+function finalDay(){
+  S.flags.c4=1;clearBtn();S.day=10;tick();
+  if(!S.f_crisis){crisisChoice();return;}
+  finalDay_after();
+}
+/* 终章开场支线：乔家劲被伏击（抗敌剧情） */
+function crisisChoice(){
+  big('—— 终 章 · 前 夜 ——');
+  nar('终焉夜深。正当你们要迈入纯白之厅，灯影骤然一暗——');
+  danger('一道黑影将乔家劲重重掼在墙上！他闷哼一声，嘴角渗出血来！');
+  talk('乔家劲','别管我……先破你们的局，别回头！');
+  pushBtn({label:'回身去救乔家劲',fn:crisisSave});
+  pushBtn({label:'（狠下心）先推门，回头再救',fn:crisisAbandon});
+}
+function crisisSave(){
+  clearBtn();S.f_crisis=1;
+  nar('你豁出全部心神，撞开那道黑影，把乔家劲拖到身侧。');
+  S.sp=Math.max(0,S.sp-20);tick();
+  ghost('乔家劲狠狠捶了你一拳：「蠢货！那考官是调虎离山！」');
+  ok('道义先行。你们的生死，彼此又多信了一分。');
+  S.tai.bond+=10;tick();
+  addC('生死之交','危难之际你回身救了乔家劲。他在鬼门关前认定了你这个兄弟。',true);
+  pushBtn({label:'并肩踏入白厅',fn:finalDay_after});
+}
+function crisisAbandon(){
+  clearBtn();S.f_crisis=1;S.tai.injured=1;S.tai.hp=Math.min(S.tai.hp,20);
+  danger('你狠下心，头也不回地撞向白厅大门。身后，传来乔家劲压低的闷哼。');
+  S.tai.bond-=15;tick();
+  ok('你赢了时间，却输掉了一段义气。');
+  addC('分道一念','为破局，你让乔家劲独自滞留险地，他重伤。',false);
+  pushBtn({label:'心口发堵，迈入终局',fn:finalDay_after});
+}
+function finalDay_after(){
+  clearBtn();
+  big('—— 终 章 · 第 十 日 ——');
+  nar('纯白之厅在这十日里第一次彻底安静。十日的铃声、考官的低语、门缝的呼吸，此刻都褪成一层薄薄的白。');
+  nar('三名考官并立，像三根楔进白昼的钉子。它们的目光落下来，落在你身上——也落在你身后那些你舍不得放下的人身上。');
+  nar('十日前你在这里醒来时，心里空落落。如今，那片空落落的地方，已被名字、旧物与一句「义字比命值钱」填满。');
+  talk('考官·白发','十日已至。最后一试，判你此生。');
+  openExam('考官·白发',[
+    {q:'“你拼了命走到今日，所求是何？用你的真心，答我一句此生誓词。”',prompt:'自由作答',
+     opts:[{label:'“终焉困我十日，困不住我回响中的记忆。我要活着，带他们越过这一日。”',answer:'我要活着'}],
+     accept:function(v){return /活|想活|回去|一起|记忆|守护|不甘心|名字/.test(v);},dmg:0,
+     good:function(){ok('考官·白发闭目良久：「心已定。那便试试，你能否破这终局。」');},
+     bad:function(){hurt(30,'考官·白发：“我听到的是空话。最后给你一次机会。”');}}
+  ],finTrial);
+}
+function finTrial(){center('—— 终 局 抉 择 ——');reshairingChoice();}
+function reshairingChoice(){
+  if(S.echo&&S.echo.name==='【毒】'&&S.cycle>=3){
+    nar('（三周目之上，你已洞悉：考官之局，源于最深处的「背信」。以毒攻毒——用其不仁，治其不仁。）');
+    pushBtn({label:'以【毒】击穿终局 → 真结局',echo:true,fn:trueEnding});
+    pushBtn({label:'舍回响，保记忆',fn:winSacrifice});
+    pushBtn({label:'径直推门 · 生死未卜',fn:winRush});
+  }else if(S.echo&&S.echo.name==='【往】'&&S.f_warriorNote){
+    nar('（旧考场的字条在你袖中发烫：“别信考官，信你自己的名字。”你抚过【往】的回响，隐约看见一条不为人知的路。）');
+    pushBtn({label:'以【往】重读老兵的旧物 → 隐秘结局',echo:true,fn:winWang});
+    pushBtn({label:'耗尽回响，强破终局',echo:true,fn:winHard});
+    pushBtn({label:'舍回响，保这份记忆',fn:winSacrifice});
+  }else if(S.echo){
+    nar('（这一次，你尚有回响，却未看破全部。你能做的，只是赌。）');
+    pushBtn({label:'耗尽回响，强破终局',echo:true,fn:winHard});
+    pushBtn({label:'舍回响，保这份记忆',fn:winSacrifice});
+  }else{
+    nar('你已经没有回响了。只剩一扇门，和你自己的名字。');
+    pushBtn({label:'推门而出',fn:winRush});
+    pushBtn({label:'走到考官面前，献出自己',fn:winSacrifice});
+  }
+  if(S.clues.some(function(c){return c.name==='考官·声台的私心';})&&S.clues.some(function(c){return c.name==='镜房的旧照';})){
+    nar('（你已看透：考官也是肉身凡胎，各有软肋。声台怕失子、无面怕认女、那白发……也在怕。）');
+    pushBtn({label:'唤起考官的人心 → 怜人终局',fn:winKind});
+  }
+  if(S.tai.alive&&S.tai.bond>=30&&!S.tai.injured){
+    nar('（若你开口，乔家劲会为你挡下一切。义字当头的莽夫，从不会对兄弟说不。）');
+    pushBtn({label:'唤乔家劲为你断后（他将阵亡）',fn:brotherBreak});
+  }
+  if(S.echo&&S.echo.name==='【毒】'&&S.cycle>=3&&S.f_warriorNote
+     &&S.clues.some(function(c){return c.name==='名字即命门';})
+     &&S.clues.some(function(c){return c.name==='考官·声台的私心';})
+     &&S.clues.some(function(c){return c.name==='镜房的旧照';})){
+    nar('（你已将终焉之地每一条暗线尽收眼底。考官之名、考官的软肋、老兵的旧路……是时候同时打开了。）');
+    pushBtn({label:'收拢所有暗线 → EX 结局「越界者」',echo:true,fn:winEx});
+  }
+}
+/* EX 结局：越界者 */
+function winEx(){
+  clearBtn();
+  if(S.echo){hurtSp(S.echo.cost);}
+  echoX('你不再破一扇门。你让三扇门，同时为你而开。');
+  nar('声台念出自己的名字，为子而泣；无面揭下脸孔，喊出那遗忘的「楠」；白发沉默良久，让出背后那条老兵走过的旧路。');
+  nar('你知考官之名，知考官之软肋，更握着老兵的家书——三条路在你脚下交成一点。终焉之地无从设门，因为所有可能，都被你同时握住。');
+  brk();big('✧ E X · 越 界 者 ✧');
+  nar('齐夏，你没有揭晓唯一答案——你是让终焉之境，从此再也困不住任何人的那个人。');
+  addC('EX·越界者','集齐考官方圆、人性与老兵旧路，让终焉之地失去「唯一的门」。',true);
+  S.end=1;endingButtons();
+}
+/* 考官个人线结局：怜人终局 */
+function winKind(){
+  clearBtn();
+  nar('你看着三名考官，叫出他们的名字与软肋——声台藏起的孩子、无面认不出的女儿、白发不敢提起的旧事。');
+  talk('考官·声台','……你，全看见了。');
+  nar('终焉之地响起一声极轻的、非机械的叹息。门，无声地为你敞开。');
+  brk();big('◈ 怜 人 终 局 ◈');
+  nar('这一回，你不是破局者，而是看破者。你带着所有名字与痛，走出轮回。终焉，从此少了一场骗局。');
+  addC('怜人终局','以悲悯看破考官的软弱，换来一场无需厮杀的离开。',true);
+  S.end=1;endingButtons();
+}
+/* 乔家劲牺牲结局 */
+function brotherBreak(){
+  clearBtn();
+  if(S.tai.alive){S.tai.alive=false;S.tai.hp=0;tick();}
+  talk('乔家劲','成。最后一程，让老子来替你开。');
+  nar('他大笑一声，把你们朝门边猛地一推，反身撞进合拢的考官之影里。');
+  ghost('「记住了，义字，比命值钱！」');
+  danger('他的话，被门缝里灌进来的白光，一下吞没了。');
+  brk();big('◍ 羁 绊 · 以 命 开 门 ◍');
+  nar('你活着踏出终焉之地。可从此，再没有人在你耳边，喊你一声「老弟」。');
+  addC('羁绊终结局','乔家劲以命替你开门。你带着他最后那句「义字比命值钱」，走出轮回。',true);
+  S.end=1;endingButtons();
+}
+function trueEnding(){
+  clearBtn();
+  if(S.echo){hurtSp(S.echo.cost);}
+  echoX('【毒】游走全身，你一字一句，剥开考官之心的缝隙。');
+  talk('考官·白发','……你，赢了。');
+  nar('纯白之厅轰然开裂。真正的门后，是晨光，是尘世，是多年未见的家。');
+  brk();big('◈ 真 结 局 ◈');
+  nar('你带着回响记忆与所有名字，走出了终焉之地。');
+  addC('真结局','以「毒」之回响瓦解背信终局，正式脱离轮回。',true);
+  ok('—— 真结局后日谈 ——');
+  nar('多年后的春日，你在街角的旧面馆，又听见那声久违的问候。');
+  talk('乔家劲','……老板，来碗阳春面。咦？兄长，你……也出来了？还是老街坊。');
+  nar('陈俊南朝你举筷、林楠的穿着仍是红衣，却不再防备。终焉之地的铃声，从此只在梦里响起。');
+  pushBtn({label:'（合卷）终谢 · 保留并轮回',fn:function(){nar('你合上这一卷。愿每个齐夏，都能走出自己的纯白白房。');S.end=1;endingButtons();}});
+}
+function winHard(){
+  clearBtn();
+  if(S.echo){hurtSp(S.echo.cost);}
+  if(S.sp<=0){
+    danger('你心神耗尽，却仍燃尽回响撞向终局。');
+    danger('回响之焰烧灭你的神智，三名考官之影反卷而来，将你碾入混沌。');
+    brk();big('◈ 被 考 官 反 制 ◈');
+    nar('你以为那是终点，其实只是又一座执念的墓碑。终焉之地，把你的名字记下了。');
+    addC('考官反制','心神耗尽仍强破终局，被考官反制吞没，重坠轮回。',true);
+    S.end=1;endingButtons();
+    return;
+  }
+  echoX('回响燃至最后一息。你与考官皆是强弩之末。');
+  danger('强破终局，代价是你透支了此世另一半的记忆。');
+  nar('门开了。你跌跌撞撞踏进白昼，身后终焉之地缓缓合拢。');
+  brk();big('◈ 硬 搏 结 局 ◈');
+  nar('你活了，却记不清乔家劲最后那句「别怕」。只有回响的灰烬，在你掌心发烫。');
+  S.end=1;endingButtons();
+}
+function winWang(){
+  clearBtn();
+  if(S.echo){hurtSp(S.echo.cost);}
+  echoX('【往】触及那片浸血的木牌——你看见一场不属于你的旧日。');
+  nar('老兵的背影在灯下佝偻：他赢下终局，考官却反悔，要他以名字为代价留下。他把三个字刻进木牌，留给了后来的你。');
+  talk('考官·白发','……那老兵，是我放走的第一人，也是唯一一个。');
+  nar('终焉之地第一次静默。三名考官的身影，齐整整矮了下去。');
+  brk();big('◈ 归 途 秘 隐 结 局 ◈');
+  nar('你带着老兵的名字走出终焉之地。身后的门没有合拢——它在等你，再也不会关死。');
+  addC('归途秘隐结局','以【往】重读老兵旧物，知晓终焉之地唯一破例的真相。',true);
+  S.end=1;endingButtons();
+}
+function winSacrifice(){
+  clearBtn();
+  nar('你松开手，任由回响沉入终焉的尘埃。');
+  echoX('—— 回响，离你而去 ——');
+  S.echo=null;tick();
+  talk('考官·白发','好。你肯舍回响换记忆，我愿放你出此门。');
+  nar('门开。你回头，却见乔家劲、陈俊南、林楠、无面，皆站在门口，含笑与你作别。');
+  brk();big('◈ 舍 身 结 局 ◈');
+  nar('你带走的是此世的记忆。而终焉之地，仍会有新的齐夏，再次踏入、往复轮回。');
+  S.end=1;endingButtons();
+}
+function winRush(){
+  clearBtn();
+  nar('你推开门。门后没有路，只有一片更深的纯白。');
+  center('—— 第十日终焉 · 轮回冲刺 ——');
+  setTimeout(function(){
+    center('—— 推 门 者 的 回 旋 ——');
+    nar('「原来十日的尽头，是第十一日。」你听见自己的声音在门内回响。');
+    nar('白光将你卷起。终焉的铃声一记一记敲在骨头上，像在点数你这一世攒下的每个名字：乔家劲、陈俊南、林楠、那老兵……还有你自己。');
+    nar('你看见碎成片的过往——白色房间、考官的钉影、兄弟挡在你身前的背。它们一片片贴上你的眼睑，又一片片剥落。');
+    nar('推门者不问归途。你在轮回的洪流里伸出手，攥住的，是下一世第一个记得的名字。');
+    nar('白光里有什么轻轻碰了碰你的掌心。你分不清，那是一枚银锁片，还是一句没能说出口的「别怕」。');
+    pushBtn({label:'坠 入 轮 回 冲 刺',fn:function(){rushSeq();}});
+    renderQB();
+  },300);
+}
+function endingButtons(){
+  pushBtn({label:'结束结局 · 轮回再启',fn:function(){rushSeq();}});
+  renderQB();
+}
+
+/* ---------- 队友协助 ---------- */
+function pactAssist(){var t=S.tai;
+  if(!t.alive){ghost('乔家劲已阵亡，无人回应。');return;}
+  if(t.bond<40){ghost('乔家劲目光凝重：“交情还浅，咱拿不准考官的路数。”');return;}
+  if(S.exam){
+    if(S.sp<15){danger('连番试探已耗尽心神，难以与乔家劲配合。');return;}
+    hurtSp(15);t.bond--;
+    ghost('乔家劲看准考官换气的刹那暴起，替你抓住一线破绽！');
+    var e=S.exam;
+    if(e){    var q=e.questions[e.qIdx];
+      if(q){ghost('“答案的门，我给你撞开了！”');if(q.good)q.good();q.eSolved=1;}
+      e.qIdx++;askQ();}
+  }else{talk('乔家劲','我盯紧着呢。谁想动你，先过我这关。');}}
+
+/* ---------- 存档恢复 ---------- */
+function resumeStory(){
+  if(S.flags.c4||S.day>=9){finalDay();return;}
+  if(S.flags.c3){chapter3();return;}
+  if(S.flags.c2){rechapter3();return;}
+  if(S.flags.c2b||S.day>=3){chapter2();return;}
+  if(S.day>=2){dayIntro();return;}
+  nar('（你回到面试的余韵中。）');pushBtn({label:'躺下休息',fn:sl1});
+}
+
+/* ---------- 启动 ---------- */
+migrateLegacy();
+User.refreshBar();
+Game.refreshSaves();
+</script>
+</body>
+</html>
