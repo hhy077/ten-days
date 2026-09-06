@@ -153,6 +153,7 @@ body{background:#050505;color:var(--bone);font-family:"SimSun","STKaiti","KaiTi"
       <button id="loreT7" onclick="Game.loreTab(7)">原著人物故事</button>
       <button id="loreT8" onclick="Game.loreTab(8)">游戏设计人物故事</button>
       <button id="loreT9" onclick="Game.loreTab(9)">回响详解</button>
+      <button id="loreT10" onclick="Game.loreTab(10)">结局图鉴</button>
     </div>
     <div id="loreBody" class="lore-body"></div>
     <div class="lore-foot">此为给初次接触《十日终焉》读者的浅显速览，已去重剧透结局，放心阅读。</div>
@@ -552,6 +553,29 @@ var LOREBODY=[
  '<div class="lc"><b>【探囊】</b>（原著·李尚武）：从虚空捞出「你认为存在」之物。<b>机制</b>：以信念为钥匙，把眼前之物看成牢笼的锁——相信它「存在」，它便在。</div>'+
  '<div class="lc"><b>【灵嗅】</b>（原著·郑英雄，契机「内心求解的执念」）：以气味辨真伪。<b>机制</b>：专克一切「说谎」环节，嗅觉永不熄灭、消耗最低——气味骗不了人。</div>'+
  '<div class="lc"><b>【洞悉】</b>（创作性回响）：洞察推演、未至已见。<b>机制</b>：破题之后，再替你摊开一记暗藏的「局后推演」线索——看得越全，终局越不被诓骗。</div>',
+  /* 10 结局图鉴（共 19 结局；★=隐藏结局，★★=最高级隐藏结局；不展示获取条件，供自行探索） */
+  '<div class="lc" style="color:#8a82a8">终焉之地，路不只一条。每一次轮回、每一道取舍，都通向不同的落幕。此为全部结局图鉴——标 ★ 者为<b style="color:#ffd76b">隐藏结局</b>，其中 <b style="color:#ff5a5a">★★ EX·越界者</b> 为最高级隐藏结局。获取条件不在此明示，留待轮回之中自行摸索。</div>'+
+  '<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:6px">终局落幕（非隐藏）</h4>'+
+  '<div class="lc"><b>真结局</b>：以毒攻毒，瓦解「背信」终局，正式脱离轮回。</div>'+
+  '<div class="lc"><b>归途秘隐结局</b>：重读老兵的旧物，窥见终焉之地唯一破例的真相。</div>'+
+  '<div class="lc"><b>生生·归途</b>：以信念自造归途之门——门，可以信则有。</div>'+
+  '<div class="lc"><b>破万法 · 一拳破局</b>：乔家劲「破万法」一拳化解一切，为众生挣一线生机。</div>'+
+  '<div class="lc"><b>双生花 · 断弦</b>：斩断青龙与天龙的双生绑定，天龙的离析再难笼罩众生。</div>'+
+  '<div class="lc"><b>怜人终局</b>：唤回考官的人性，不战而破其局。</div>'+
+  '<div class="lc"><b>以名为引 · 各得其所</b>：送所有困者进入不再有死亡的世界，主角独留终焉孤神。</div>'+
+  '<div class="lc"><b>入梦 · 相见</b>：织出想念之人的门，在记忆构成的现实中相见、相伴、终老。</div>'+
+  '<div class="lc"><b>仓颉棋 · 忆归</b>：地龙落败，笼罩众生的「隔断」消失，记忆随之回归。</div>'+
+  '<div class="lc"><b>逆运 · 归途</b>：押上整副好运，换一条回家的路。</div>'+
+  '<div class="lc"><b>推演 · 通幽</b>：把终焉之地的每一盘局推演到底，「局」的本体也无处可藏。</div>'+
+  '<div class="lc"><b>强破终局</b>：燃尽回响强破考官之门（精神耗尽则会反被考官反制）。</div>'+
+  '<div class="lc"><b>舍身结局</b>：舍去回响，只求保住这份记忆，安然出局。</div>'+
+  '<div class="lc"><b>推门者的回旋</b>：无回响，径直推门，坠入下一轮回的冲刺。</div>'+
+  '<div class="lc"><b>羁绊 · 以命开门</b>：唤乔家劲断后，他为你挡下致命一劫，以命换门。</div>'+
+  '<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:14px">★ 隐藏结局</h4>'+
+  '<div class="lc"><b>★★ EX · 越界者</b>（最高级隐藏结局）：不再破一扇门，而是让考官之名、考官软肋、老兵旧路三者同时交叠，使终焉之地失去「唯一的门」。</div>'+
+  '<div class="lc"><b>★ 越过终焉 · 造神</b>（原著隐藏）：参透终焉之地造神牢笼的本质，以生生不息掀翻轮回，「各位，极道万岁。」</div>'+
+  '<div class="lc"><b>★ 九命 · 替罪</b>（原著隐藏）：陈俊南以「替罪」替你留名，用尽第九条命。</div>'+
+  '<div class="lc"><b>★ 白羊 · 执棋者归位</b>（原著隐藏）：不再破门造门，而是巡游每一处旧局，执起众生本应自己下的棋。</div>',
 ];
 
 /* ---------- 用户系统（本地多账户，localStorage 持久化） ---------- */
@@ -648,7 +672,7 @@ var Game={
   lore:function(){el('lore').classList.add('show');Game.loreTab(0);},
   loreClose:function(){el('lore').classList.remove('show');},
   loreTab:function(i){
-    [0,1,2,3,4,5,6,7,8,9].forEach(function(k){var b=el('loreT'+k);if(b)b.className=(k===i?'active':'');});
+    [0,1,2,3,4,5,6,7,8,9,10].forEach(function(k){var b=el('loreT'+k);if(b)b.className=(k===i?'active':'');});
     el('loreBody').innerHTML=LOREBODY[i];
   },
   rest:function(){if(S.end)return;ok('你靠墙闭目，精神略复。');S.sp=Math.min(80,S.sp+3);tick();},
