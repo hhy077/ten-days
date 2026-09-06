@@ -928,7 +928,7 @@ function chapter2(){
      good:function(){ok('考官·巨声：“好一个不矛盾。”');ghost('乔家劲在旁暗暗给你比了个大拇指。');S.tai.bond+=8;tick();},
      bad:function(){hurt(40,'考官·巨声：“世间本无两全。答错，就得死。”');}}
   ],function(){S.flags.c2=1;talk('考官·巨声','试炼未央，退下。');ok('—— 生背试炼上半通过 ——');
-    pushBtn({label:'分析巨声考官',fn:function(){addC('巨声的破绽','他反复试探你是否慌乱。此考官憎恶慌乱之人。');nar('你记下了巨声考官的话语节奏。');}});
+    pushBtn({label:'分析巨声考官',fn:function(){addC('巨声的破绽','他反复试探你是否慌乱。此考官憎恶慌乱之人。');nar('你记下了巨声考官的话语节奏。');if(!S.f_doc){pushBtn({label:'翻考官落下的旧公文',fn:gongwen});}pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,5);advanceChain_rech3();}});}});
     if(!S.f_doc){pushBtn({label:'翻考官落下的旧公文',fn:gongwen});}
     pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,5);advanceChain_rech3();}});});
 }
@@ -1513,7 +1513,8 @@ function f3(){nar('你借着夜色走上前。');
   nar('她缓缓抬头，眼中含泪。');
   talk('林楠','也正因如此，他认不出我，更放不下我。');
   addC('名字的重量','无面考官真名含「楠」，是林楠之父。名字是回响，也是枷锁。',true);
-  ghost('乔家劲握紧拳头：「这等背信弃义之人设的局，咱得想法子破。」');}
+  ghost('乔家劲握紧拳头：「这等背信弃义之人设的局，咱得想法子破。」');
+  pushBtn({label:'告辞林楠',fn:function(){nar('你记下这个名字的分量，转身回到长廊。');chapter3();}});}
 /* 支线：废弃考场（老兵的答案） */
 function lostroom(){
   clearBtn();S.f_lostroom=1;
