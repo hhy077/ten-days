@@ -745,7 +745,7 @@ function answerExam(v){
 }
 function echoSolve(q){
   if(!S.echo)return;
-  if(S.sp<S.echo.cost){danger('精神不足，回响黯淡，无法施放。');return;}
+  if(S.sp<S.echo.cost){danger('精神不足，回响黯淡，无法施放。');setTimeout(function(){if(!S.end&&S.exam)askQ();},500);return;}
   hurtSp(S.echo.cost);q.eSolved=1;
   var noFade=(S.echo.name==='【生生不息】'||S.echo.name==='【强运】'||S.echo.name==='【灵嗅】');
   var thr=(S.echo.name==='【强运】'?72:58);
