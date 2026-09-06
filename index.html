@@ -218,7 +218,7 @@ var BUTTONS=[],BSB=0;
 function renderQB(){el('quickButtons').innerHTML=BUTTONS.map(function(b){var c='qbtn'+(b.echo?' echo-action':'');return '<button class="'+c+'" onclick="B('+b.slot+')">'+b.label+'</button>';}).join('');}
 function pushBtn(o){o.slot=BSB++;BUTTONS.push(o);renderQB();}
 function clearBtn(){BUTTONS=[];BSB=0;renderQB();}
-function B(i){var b=BUTTONS[i];if(b&&b.fn)b.fn();}
+function B(i){var b=BUTTONS[i];if(b&&b.fn){clearBtn();b.fn();}}
 
 /* ---------- 输出 ---------- */
 function out(o){var p=document.createElement('p');
