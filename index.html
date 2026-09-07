@@ -662,10 +662,10 @@ var Game={
   delSave:function(id){localStorage.removeItem(savKey(id));Game.refreshSaves();},
   loadSave:function(id){var raw=localStorage.getItem(savKey(id));if(!raw){danger('读取失败');return;}
     var d;try{d=JSON.parse(raw);}catch(e){danger('存档「'+id+'」已损坏，无法读取。');return;}
-    S=Object.assign(baseState(),d);S.end=0;tick();
+    S=Object.assign(baseState(),d);S.exam=null;S.end=0;tick();
     el('menu').style.display='none';el('app').style.display='flex';allowIn();showUI();
     sys('—— 读取存档 '+id+' ——');resumeStory();},
-  doSave:function(){if(S.end)return;var pf=userPrefix();
+  doSave:function(){if(S.end)return;if(S.exam){danger('对局进行中，无法存档。');return;}var pf=userPrefix();
     var slots=Object.keys(localStorage).filter(function(k){return k.indexOf(pf)===0;});
     if(slots.length>=4){danger('存档已满（4 格），请先在菜单删除。');return;}
     var ids=slots.map(function(k){return +k.slice(pf.length);});var n=ids.length?Math.max.apply(null,ids)+1:1;
@@ -995,7 +995,7 @@ function rechapter3(){
      accept:function(v){return /没有|不怕|敢|深渊|无妨|往前|横竖|都是死|照样|不在乎|无所畏惧/.test(v);},dmg:45,
      good:function(){ok('考官·无面：“勇气尚存。终焉之地，最贵的是敢推门的鬼。”');addDao(20);},
      bad:function(){hurt(45,'考官·无面：“退却者，亡于门中。”');}}
-  ],function(){talk('考官·无面','你过了我的试炼。三日之后，终章会有一位「老朋友」等你。');
+  ],function(){S.flags.c2done=1;talk('考官·无面','你过了我的试炼。三日之后，终章会有一位「老朋友」等你。');
     ok('（夜里，你有一个去留抉择。）');
     if(!S.f_mirror){pushBtn({label:'夜探无面的镜房',fn:mirrorroom});}
     pushBtn({label:'径去见陈俊南与林楠',fn:function(){brk();center('（数日后）');chapter3entry();}});});
@@ -1058,7 +1058,8 @@ function chapter3(){
   if(!S.f_xuyuan){pushBtn({label:'一册无人敢翻的推演簿，扉页写着你的名字',fn:xuYuan});}
   if(!S.f_yunzhi){pushBtn({label:'云瑶坐在长廊尽头，望着铁栏外的光出神',fn:yunZhi});}
   pushBtn({label:'问陈俊南一个名字的事',fn:askName});
-  pushBtn({label:'回响进阶 · 抉择',fn:t3});
+  if(!S.f_echoPicked){pushBtn({label:'回响进阶 · 抉择',fn:t3});}
+  else{pushBtn({label:'迈向终章 · 第十日',fn:function(){S.day=10;finalDay();}});}
 }
 /* 支线：推演簿 · 洞悉（创作性，取【洞悉】专属结局之钥） */
 function xuYuan(){S.f_xuyuan=1;
@@ -1580,7 +1581,7 @@ function lostroom_take(){
 }
 /* 支线：问陈俊南一个名字的事 */
 function askName(){
-  clearBtn();
+  clearBtn();S.f_askname=1;
   talk('陈俊南','问名字？在这地方，名字不是用来叫的，是用来留的。');
   nar('他瞥了一眼你身后的乔家劲，压低声音：');
   talk('陈俊南','考官的名字，是他们的命门。你能让考官开口念出自己的名字，那局，就破了一半。');
@@ -1608,7 +1609,7 @@ function pickEcho(id){
       'dx':{name:'【洞悉】',cost:42,x:'你已炼化回响——洞悉。整座终焉之地的「局」，在你眼底一层层摊开。'}
     };
     var r=R[id]||R['ssbx'];
-    S.echo={name:r.name,cost:r.cost};
+    S.f_echoPicked=1;S.echo={name:r.name,cost:r.cost};
     echoX(r.x);
     if(id==='dx'&&!S.f_dongxi_revealed){S.f_dongxi_revealed=1;addC('局后推演·洞悉','洞悉在每一局后，替你多摊开一道暗线。',true);}
     S.echoLv=1;tick();nar('回响进阶。你心中隐隐有了破局的方向。');
@@ -1966,7 +1967,8 @@ function trueEnding(){
 }
 function winHard(){
   clearBtn();
-  if(S.echo){hurtSp(S.echo.cost);}
+  if(S.echo&&S.sp<S.echo.cost){S.sp=0;tick();}
+  else if(S.echo){hurtSp(S.echo.cost);}
   if(S.sp<=0){
     danger('你心神耗尽，却仍燃尽回响撞向终局。');
     danger('回响之焰烧灭你的神智，三名考官之影反卷而来，将你碾入混沌。');
@@ -2042,8 +2044,9 @@ function pactAssist(){var t=S.tai;
 
 /* ---------- 存档恢复 ---------- */
 function resumeStory(){
+  if(S.exam){S.exam=null;sys('（未完成的对局已被搁置。）');}
   if(S.flags.c4||S.day>=9){finalDay();return;}
-  if(S.flags.c3){chapter3();return;}
+  if(S.flags.c3||S.flags.c2done){chapter3();return;}
   if(S.flags.c2){rechapter3();return;}
   if(S.flags.c2b||S.day>=3){chapter2();return;}
   if(S.day>=2){dayIntro();return;}
