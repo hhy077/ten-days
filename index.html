@@ -682,12 +682,10 @@ var AudioSys={
     }
     return this.ctx;
   },
+  /* 每次打开游戏都使用默认数值（音乐50/音效60/未静音），不保留上次调整 */
   load:function(){
-    try{var s=JSON.parse(localStorage.getItem('tzy_audio')||'{}');
-      if(typeof s.music==='number')this.st.music=Math.max(0,Math.min(1,s.music));
-      if(typeof s.sfx==='number')this.st.sfx=Math.max(0,Math.min(1,s.sfx));
-      if(typeof s.mute==='boolean')this.st.mute=s.mute;
-    }catch(e){}
+    this.st={music:0.5,sfx:0.6,mute:false};
+    try{localStorage.removeItem('tzy_audio');}catch(e){}
     var mu=el('auMusic'),sx=el('auSfx'),mt=el('auMute');
     if(mu)mu.value=Math.round(this.st.music*100);
     if(sx)sx.value=Math.round(this.st.sfx*100);
