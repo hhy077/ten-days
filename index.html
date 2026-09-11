@@ -90,6 +90,10 @@ body{background:#050505;color:var(--bone);font-family:"SimSun","STKaiti","KaiTi"
 .login-actions{display:flex;gap:10px;}
 .login-actions .menu-btn{flex:1;width:auto;padding:11px;font-size:15px;}
 .login-foot{color:#5c5473;font-size:12px;text-align:center;letter-spacing:1px;}
+#audioSet{position:fixed;inset:0;z-index:70;background:rgba(3,3,3,.94);display:none;align-items:center;justify-content:center;padding:20px;}
+#audioSet.show{display:flex;}
+#audioSet .lf-row input[type=range]{flex:1;accent-color:var(--blood);}
+#audioSet .lf-row input[type=checkbox]{flex:0;width:auto;transform:scale(1.4);accent-color:var(--blood);}
 .hint{color:#555;font-size:12px;letter-spacing:2px;max-width:620px;text-align:center;line-height:2;}
 #lore{position:fixed;inset:0;z-index:60;background:rgba(3,3,3,.92);display:none;align-items:center;justify-content:center;padding:20px;}
 #lore.show{display:flex;}
@@ -160,6 +164,20 @@ body{background:#050505;color:var(--bone);font-family:"SimSun","STKaiti","KaiTi"
   </div>
 </div>
 
+<div id="audioSet" onclick="if(event.target===this)AudioSys.close()">
+  <div class="login-box">
+    <h3>声 韵 · 设 置</h3>
+    <div class="lf-row"><label>音乐</label><input id="auMusic" type="range" min="0" max="100" value="50" oninput="AudioSys.setMusic(+this.value)"></div>
+    <div class="lf-row"><label>音效</label><input id="auSfx" type="range" min="0" max="100" value="60" oninput="AudioSys.setSfx(+this.value)"></div>
+    <div class="lf-row"><label>静音</label><input id="auMute" type="checkbox" onchange="AudioSys.setMute(this.checked)"></div>
+    <div class="login-msg" id="auMsg"></div>
+    <div class="login-actions">
+      <button class="menu-btn" onclick="AudioSys.close()">收 起</button>
+    </div>
+    <div class="login-foot">音效 · 氛围音乐：由 Web Audio API 实时合成，<b style="color:#8f86d8">本作原创制作</b>。<br>免版权 · 无需联网 · 可离线游玩。引擎：Web Audio · 《十日终焉》· 2026</div>
+  </div>
+</div>
+
 <div id="app" style="display:none;">
   <div id="statusbar">
     <span class="st day">日 <span id="stDay"></span>/10</span>
@@ -173,6 +191,7 @@ body{background:#050505;color:var(--bone);font-family:"SimSun","STKaiti","KaiTi"
       <button class="btn-mini" onclick="Game.rest()">休整</button>
       <button class="btn-mini" onclick="Game.doSave()">存档</button>
       <button class="btn-mini" onclick="Game.lore()">卷宗</button>
+      <button class="btn-mini" onclick="AudioSys.open()">声韵</button>
       <button class="btn-mini" onclick="Game.openMenu()">菜单</button>
     </span>
   </div>
@@ -257,7 +276,7 @@ function stopIn(){el('left').style.pointerEvents='none';}
 function allowIn(){el('left').style.pointerEvents='';}
 
 /* ---------- 死亡 & 轮回 ---------- */
-function death(){S.end=1;stopIn();var fx=el('fx');fx.className='dead';
+function death(){S.end=1;AudioSys.sfx('death');AudioSys.music('ending');stopIn();var fx=el('fx');fx.className='dead';
   fx.innerHTML='<div class="shade"></div><div class="fx-text"><div class="fx-big">你 死 了</div><div class="fx-sub">血量归零 · 触发轮回冲刺</div><button class="fx-btn" onclick="Game.rush()">轮回冲刺</button></div>';}
 function rushSeq(){var fx=el('fx');fx.className='rush';var ch='终焉轮回冲刺',i=0;
   var iv=setInterval(function(){if(i>=ch.length){clearInterval(iv);setTimeout(doLoop,550);return;}
@@ -648,6 +667,156 @@ function migrateLegacy(){
 function userPrefix(){return 'tzy_'+(User.current()||'guest')+'_';}
 function savKey(id){return userPrefix()+id;}
 
+/* ====================== 音效与音乐系统（Web Audio 实时合成 · 原创） ====================== */
+var AudioSys={
+  ctx:null,timer:null,cur:'',_nextT:0,
+  st:{music:0.5,sfx:0.6,mute:false},
+  ensure:function(){
+    if(!this.ctx){
+      try{this.ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return null;}
+    }
+    if(this.ctx.state==='suspended')this.ctx.resume();
+    return this.ctx;
+  },
+  load:function(){
+    try{var s=JSON.parse(localStorage.getItem('tzy_audio')||'{}');
+      if(typeof s.music==='number')this.st.music=Math.max(0,Math.min(1,s.music));
+      if(typeof s.sfx==='number')this.st.sfx=Math.max(0,Math.min(1,s.sfx));
+      if(typeof s.mute==='boolean')this.st.mute=s.mute;
+    }catch(e){}
+    var mu=el('auMusic'),sx=el('auSfx'),mt=el('auMute');
+    if(mu)mu.value=Math.round(this.st.music*100);
+    if(sx)sx.value=Math.round(this.st.sfx*100);
+    if(mt)mt.checked=this.st.mute;
+  },
+  save:function(){try{localStorage.setItem('tzy_audio',JSON.stringify(this.st));}catch(e){}},
+  open:function(){this.ensure();el('audioSet').classList.add('show');},
+  close:function(){el('audioSet').classList.remove('show');},
+  setMusic:function(v){this.st.music=v/100;this.save();this.musicUpdate();},
+  setSfx:function(v){this.st.sfx=v/100;this.save();},
+  setMute:function(b){this.st.mute=b;this.save();if(b){this.music('');}else{this.musicUpdate();}},
+  /* 单音 */
+  tone:function(f,dur,type,vol,when,pan,detune){
+    var c=this.ensure();if(!c||this.st.mute||vol<=0)return;
+    var t=when||c.currentTime;
+    var o=c.createOscillator(),g=c.createGain();
+    o.type=type||'sine';o.frequency.value=f;
+    if(detune)o.detune.value=detune;
+    if(c.createStereoPanner&&pan){var p=c.createStereoPanner();p.pan.value=pan;o.connect(p);p.connect(g);}
+    else o.connect(g);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol,t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.start(t);o.stop(t+dur+0.05);
+  },
+  /* 噪声（低频轰响 / 鼓点） */
+  noise:function(dur,vol,when,fc){
+    var c=this.ensure();if(!c||this.st.mute||vol<=0)return;
+    var t=when||c.currentTime;
+    var len=Math.max(1,(dur*c.sampleRate)|0);
+    var buf=c.createBuffer(1,len,c.sampleRate),d=buf.getChannelData(0);
+    for(var i=0;i<len;i++)d[i]=Math.random()*2-1;
+    var s=c.createBufferSource();s.buffer=buf;
+    var f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=fc||800;
+    var g=c.createGain();
+    g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    s.connect(f);f.connect(g);g.connect(c.destination);
+    s.start(t);s.stop(t+dur+0.05);
+  },
+  /* 音效库（全部实时合成） */
+  sfx:function(n){
+    if(!this.ctx||this.st.mute||this.st.sfx<=0)return;
+    var v=this.st.sfx*0.9,now=this.ctx.currentTime,T=this.tone.bind(this),N=this.noise.bind(this);
+    switch(n){
+      case 'click':T(660,0.06,'square',v*0.22,now);break;
+      case 'ok':T(523,0.18,'sine',v,now);T(659,0.18,'sine',v,now+0.07);T(784,0.18,'sine',v,now+0.14);T(1046,0.32,'sine',v*0.9,now+0.21);break;
+      case 'bad':T(494,0.22,'sawtooth',v*0.65,now);T(392,0.3,'sawtooth',v*0.65,now+0.14);T(311,0.5,'sawtooth',v*0.6,now+0.3);break;
+      case 'hurt':T(160,0.25,'sawtooth',v*0.6,now);T(110,0.4,'square',v*0.35,now+0.05);N(0.2,v*0.45,now,400);break;
+      case 'exam':T(196,0.7,'sine',v*0.8,now);T(196,0.7,'sine',v*0.5,now,0,7);T(147,1.1,'sine',v*0.5,now+0.3);break;
+      case 'dice':for(var i=0;i<5;i++)T(1400+Math.random()*800,0.05,'triangle',v*0.45,now+i*0.055);break;
+      case 'clue':T(784,0.3,'sine',v*0.75,now);T(987,0.3,'sine',v*0.75,now+0.16);T(1318,0.55,'sine',v*0.65,now+0.32);break;
+      case 'dao':T(880,0.12,'triangle',v*0.55,now);T(1320,0.25,'triangle',v*0.45,now+0.06);break;
+      case 'save':T(784,0.15,'sine',v*0.7,now);T(1175,0.3,'sine',v*0.6,now+0.1);break;
+      case 'saveFail':T(311,0.25,'sawtooth',v*0.55,now);T(233,0.4,'sawtooth',v*0.55,now+0.18);break;
+      case 'echoUp':T(196,1.2,'sine',v*0.45,now);T(247,1.2,'sine',v*0.45,now);T(294,1.2,'sine',v*0.45,now);T(392,1.4,'sine',v*0.5,now+0.4);T(494,1.6,'sine',v*0.4,now+0.9);break;
+      case 'sheng':N(0.9,v,now,120);T(55,0.9,'sine',v*0.85,now);T(82,0.9,'sawtooth',v*0.45,now);break;
+      case 'loop':T(440,0.4,'sine',v*0.55,now);T(415,0.4,'sine',v*0.55,now+0.35);T(392,0.4,'sine',v*0.55,now+0.7);T(370,0.4,'sine',v*0.55,now+1.05);T(330,0.8,'sine',v*0.5,now+1.4);break;
+      case 'death':T(130,2.2,'sine',v*0.7,now);T(98,2.6,'sine',v*0.55,now+0.3);T(65,3,'sine',v*0.5,now+0.7);break;
+      case 'heart':T(65,0.12,'sine',v*0.8,now);T(60,0.12,'sine',v*0.6,now+0.14);break;
+      case 'bell':T(1046,0.9,'sine',v*0.22,now);T(1568,1.3,'sine',v*0.1,now+0.02);break;
+    }
+  },
+  /* 音乐场景定义 */
+  scenes:{
+    menu:{bpm:52,chords:[[220,277,330],[196,247,311],[174,220,262],[146,185,220]],dur:3.6,wave:'sine',vol:0.32,deco:[523,784],decoInt:9},
+    intro:{bpm:48,chords:[[392,494,587],[330,415,494],[294,370,440]],dur:4,wave:'sine',vol:0.22,deco:[0],decoInt:0},
+    daily:{bpm:60,chords:[[220,262,330],[196,233,294],[174,220,262],[165,208,247]],dur:2.8,wave:'triangle',vol:0.26,deco:[659,880],decoInt:7},
+    exam:{bpm:84,chords:[[147,175,220],[131,165,196],[139,165,196],[147,175,220]],dur:2.2,wave:'sawtooth',vol:0.2,deco:[392,494],decoInt:4,heart:true},
+    sheng:{bpm:120,chords:[[110,165,220]],dur:1.2,wave:'sawtooth',vol:0.28,deco:[0],decoInt:0,rumble:true},
+    silent:{bpm:40,chords:[[220,440,660],[208,392,622],[196,370,587]],dur:4,wave:'sine',vol:0.16,deco:[880,1046],decoInt:12},
+    echo:{bpm:66,chords:[[196,247,294,392],[175,220,277,349],[147,196,247,294]],dur:2.6,wave:'triangle',vol:0.26,deco:[784,988],decoInt:5},
+    final:{bpm:58,chords:[[196,233,294],[185,220,277],[175,208,262],[165,196,247]],dur:3.2,wave:'sine',vol:0.34,deco:[523,659,784],decoInt:6},
+    ending:{bpm:36,chords:[[147,220,330],[131,196,294],[110,165,247]],dur:4.4,wave:'sine',vol:0.28,deco:[0],decoInt:0}
+  },
+  /* 切换背景音乐（幂等） */
+  music:function(name){
+    if(this.cur===name)return;
+    this.cur=name;
+    if(this.timer){clearInterval(this.timer);this.timer=null;}
+    this._nextT=0;
+    if(!name||!this.ctx||this.st.mute)return;
+    var sc=this.scenes[name];if(!sc)return;
+    var self=this,i=0;
+    this.timer=setInterval(function(){self.musicTick(sc,i++);},500);
+  },
+  musicTick:function(sc,i){
+    var c=this.ctx;if(!c||this.st.mute)return;
+    var T=this.tone.bind(this);
+    var now=c.currentTime,look=now+1.4;
+    if(this._nextT<now-0.2)this._nextT=now+0.15;
+    var barDur=sc.dur;
+    while(this._nextT<look){
+      var ch=sc.chords[Math.floor(this._nextT/barDur)%sc.chords.length];
+      var v=sc.vol*this.st.music;
+      for(var j=0;j<ch.length;j++)T(ch[j],barDur*1.2,sc.wave,v/ch.length,this._nextT,(j-1)*0.03);
+      if(sc.rumble)this.noise(barDur*1.1,v*0.4,this._nextT,90);
+      if(sc.heart&&Math.floor(this._nextT/barDur)%2===0){T(62,0.12,'sine',v*0.5,this._nextT);T(57,0.12,'sine',v*0.35,this._nextT+0.16);}
+      if(sc.decoInt>0&&sc.deco&&sc.deco[0]&&Math.floor(this._nextT/barDur)%sc.decoInt===0){
+        var d=sc.deco[Math.floor(this._nextT/(barDur*sc.decoInt))%sc.deco.length];
+        T(d,barDur*0.6,'sine',v*0.5,this._nextT);
+      }
+      this._nextT+=barDur;
+    }
+  },
+  /* 依据游戏状态自动选择场景 */
+  musicUpdate:function(){
+    var m=el('menu');
+    if(this.st.mute){this.music('');return;}
+    if(!this.ctx){this.music('');return;}
+    var name;
+    if(m&&m.style.display!=='none')name='menu';
+    else if(S&&S.end)name='ending';
+    else if(S&&S.exam){
+      var ex=S.exam.examiner||'';
+      if(ex.indexOf('巨声')>=0)name='sheng';
+      else if(ex.indexOf('无面')>=0)name='silent';
+      else if(ex.indexOf('终章')>=0||ex.indexOf('白发')>=0)name='final';
+      else name='exam';
+    }
+    else if(S&&(S.flags.c4||S.day>=9||S.day===10))name='final';
+    else if(S&&S.echo)name='echo';
+    else if(S&&S.day<=1)name='intro';
+    else name='daily';
+    this.music(name);
+  }
+};
+/* 首次交互解锁音频 + 按钮点击音效（事件委托） */
+document.addEventListener('click',function(e){
+  if(!AudioSys.ctx){AudioSys.ensure();}
+  var t=e.target;
+  if(t&&t.closest&&t.closest('button,.menu-btn,.qbtn,.fx-btn,.btn-mini'))AudioSys.sfx('click');
+},true);
+
 /* ---------- 主控制器 ---------- */
 var Game={
   newGame:function(){S=baseState();el('menu').style.display='none';el('app').style.display='flex';showUI();prologue();},
@@ -665,14 +834,14 @@ var Game={
     S=Object.assign(baseState(),d);S.exam=null;S.end=0;tick();
     el('menu').style.display='none';el('app').style.display='flex';allowIn();showUI();
     sys('—— 读取存档 '+id+' ——');resumeStory();},
-  doSave:function(){if(S.end)return;if(S.exam){danger('对局进行中，无法存档。');return;}var pf=userPrefix();
+  doSave:function(){if(S.end)return;if(S.exam){danger('对局进行中，无法存档。');AudioSys.sfx('saveFail');return;}var pf=userPrefix();
     var slots=Object.keys(localStorage).filter(function(k){return k.indexOf(pf)===0;});
-    if(slots.length>=4){danger('存档已满（4 格），请先在菜单删除。');return;}
+    if(slots.length>=4){danger('存档已满（4 格），请先在菜单删除。');AudioSys.sfx('saveFail');return;}
     var ids=slots.map(function(k){return +k.slice(pf.length);});var n=ids.length?Math.max.apply(null,ids)+1:1;
     var sd={};for(var k in S){if(typeof S[k]!=='function')sd[k]=S[k];}
     sd.dt=new Date().toLocaleString();
     localStorage.setItem(savKey(n),JSON.stringify(sd));
-    ok('已写入存档 '+n+'（日'+S.day+'/周目'+S.cycle+'）。');},
+    ok('已写入存档 '+n+'（日'+S.day+'/周目'+S.cycle+'）。');AudioSys.sfx('save');},
   tab:function(t){['Inv','Clue','Tem'].forEach(function(x){el('tab'+x).classList.remove('active');});
     el('tab'+t[0].toUpperCase()+t.slice(1)).classList.add('active');
     el('panelInv').style.display=t==='inv'?'block':'none';
@@ -696,7 +865,7 @@ function tick(){el('stDay').textContent=S.day;el('stCyc').textContent=S.cycle;
   el('stHp').style.width=Math.max(0,S.hp)+'%';el('stHpN').textContent=Math.max(0,(S.hp|0));
   el('stSp').style.width=Math.max(0,S.sp)+'%';el('stSpN').textContent=Math.max(0,(S.sp|0));
   el('stDao').textContent=S.dao;el('chday').textContent=S.day;el('chcyc').textContent=S.cycle;
-  el('echoChip').innerHTML=S.echo?'<span class="echo-chip">'+S.echo.name+' '+(S.echoLv?'·觉醒':'')+'</span>':'';}
+  el('echoChip').innerHTML=S.echo?'<span class="echo-chip">'+S.echo.name+' '+(S.echoLv?'·觉醒':'')+'</span>':'';AudioSys.musicUpdate();}
 function renderPanels(){
   el('panelInv').innerHTML=(S.items.length?S.items.map(function(i){return '<div class="item-card"><div class="iname">'+i.name+'</div><div class="idesc">'+(i.desc||'')+'</div></div>';}).join(''):'<div style="color:#555">（空）</div>')+'<h4>道点</h4><div class="item-card"><div class="iname" style="color:#ffd76b">'+S.dao+'</div><div class="idesc">天地道果，可推动命运。</div></div>';
   el('panelClue').innerHTML=S.clues.length?S.clues.map(function(c){return '<div class="clue-card '+(c.lk?'risk':'')+'"><b>'+c.name+'</b>'+(c.lk?'（锁定）':'')+'<br><span style="color:#8a8a80">'+c.desc+'</span></div>';}).join(''):'<div style="color:#555">尚未发现线索</div>';
@@ -717,6 +886,7 @@ function handleSpeech(v){
 /* ===================== 考官答题 ===================== */
 function openExam(examiner,questions,onEnd){
   S.exam={examiner:examiner,qIdx:0,questions:questions,onEnd:onEnd};
+  AudioSys.sfx('exam');
   talk(examiner,'你只觉一颗心在胸腔里擂鼓。他缓缓开口——');
   askQ();
 }
@@ -744,10 +914,12 @@ function answerExam(v){
   }
   if(q.accept&&q.accept(v)){
     out({t:'ok',x:'（你的回答，令考官沉默了片刻。）'});
+    AudioSys.sfx('ok');
     if(q.good)q.good(v);
     e.qIdx++;askQ();
   }else{
     danger('—— 回答错误 / 触犯禁忌 ——');
+    AudioSys.sfx('bad');
     if(q.bad)q.bad(v);else hurt(q.dmg||15,e.examiner+'：“答错，代价将至。”');
     e.qIdx++;
     setTimeout(function(){if(!S.end&&S.exam===e)askQ();},550);
@@ -765,6 +937,7 @@ function echoSolve(q){
       out({t:'ok',x:'（碎片险险擦过你的眉角——运气，替你挡了这一刀。）'});
       var e0=S.exam;if(e0){e0.qIdx++;askQ();}return;
     }
+    AudioSys.sfx('ok');
     echoX(S.echo.name+' 之辉普照，你窥破考官预设的答案。');
     out({t:'ok',x:'（回响替你叩开了答案之门。）'});
     if(S.echo.name==='【洞悉】'&&!S.f_dongxi_revealed){S.f_dongxi_revealed=1;addC('局后推演·洞悉','洞悉在每一局后，替你多摊开一道暗线。',true);}
@@ -876,6 +1049,7 @@ function ft_past(){S.f_past=1;
 function diceGamble(){S.f_dice=1;
   var r=rand(1,6);
   nar('你擦去骰子上的锈，随手一掷。格落格落……');
+  AudioSys.sfx('dice');
   sys('朝上的点数是【 '+r+' 】');
   if(r%2===0){S.dao+=10;tick();ok('双数面朝上。你若有所得，道点 +10。');}
   else{hurt(8,'单数面朝上。墙角倏地一暗，你莫名心惊，气血微亏。');}
@@ -1610,6 +1784,7 @@ function pickEcho(id){
     };
     var r=R[id]||R['ssbx'];
     S.f_echoPicked=1;S.echo={name:r.name,cost:r.cost};
+    AudioSys.sfx('echoUp');
     echoX(r.x);
     if(id==='dx'&&!S.f_dongxi_revealed){S.f_dongxi_revealed=1;addC('局后推演·洞悉','洞悉在每一局后，替你多摊开一道暗线。',true);}
     S.echoLv=1;tick();nar('回响进阶。你心中隐隐有了破局的方向。');
@@ -2054,6 +2229,7 @@ function resumeStory(){
 }
 
 /* ---------- 启动 ---------- */
+AudioSys.load();
 migrateLegacy();
 User.refreshBar();
 Game.refreshSaves();
