@@ -899,7 +899,7 @@ var AudioSys={
       case 'save':T(J(784),J(0.15),'sine',v*0.55,now);T(J(1175),J(0.3),'sine',v*0.5,now+0.1);break;
       case 'saveFail':T(J(311),J(0.25),'sawtooth',v*0.6,now);T(J(233),J(0.4),'sawtooth',v*0.6,now+0.18);break;
       case 'echoUp':T(196,1.2,'sine',v*0.45,now);T(247,1.2,'sine',v*0.45,now);T(294,1.2,'sine',v*0.45,now);T(J(392),1.4,'sine',v*0.5,now+0.4);T(J(494),1.6,'sine',v*0.4,now+0.9);break;
-      case 'sheng':N(0.9,v*0.65,now,120);T(55,0.9,'sine',v*0.6,now);T(82,0.9,'sawtooth',v*0.3,now);break;
+      case 'sheng':N(0.9,v*0.5,now,120);T(55,0.9,'sine',v*0.5,now);T(82,0.9,'sawtooth',v*0.22,now);break;
       case 'loop':T(J(440),J(0.4),'sine',v*0.55,now);T(J(415),J(0.4),'sine',v*0.55,now+0.35);T(J(392),J(0.4),'sine',v*0.55,now+0.7);T(J(370),J(0.4),'sine',v*0.55,now+1.05);T(J(330),J(0.8),'sine',v*0.5,now+1.4);break;
       case 'death':T(J(130),2.2,'sine',v*0.55,now);T(J(98),2.6,'sine',v*0.45,now+0.3);T(J(65),3,'sine',v*0.4,now+0.7);break;
       case 'heart':T(J(65),J(0.12),'sine',v*0.45,now);T(J(60),J(0.12),'sine',v*0.35,now+0.14);break;
@@ -917,7 +917,7 @@ var AudioSys={
     daily:{bpm:60,chords:[[220,262,330],[196,233,294],[174,220,262],[165,208,247]],dur:2.8,wave:'triangle',vol:0.32,deco:[659,880],decoInt:7},
     clue:{bpm:44,chords:[[147,208,247],[131,185,233],[110,165,196,262]],dur:3.4,wave:'sine',vol:0.28,deco:[311,466],decoInt:6},
     exam:{bpm:84,chords:[[147,175,220],[131,165,196],[139,165,196],[147,175,220]],dur:2.2,wave:'sawtooth',vol:0.26,deco:[392,494],decoInt:4,heart:true},
-    sheng:{bpm:120,chords:[[110,165,220]],dur:1.2,wave:'sawtooth',vol:0.32,deco:[0],decoInt:0,rumble:true},
+    sheng:{bpm:120,chords:[[110,165,220]],dur:1.2,wave:'sawtooth',vol:0.26,deco:[0],decoInt:0,rumble:true},
     silent:{bpm:40,chords:[[220,440,660],[208,392,622],[196,370,587]],dur:4,wave:'sine',vol:0.2,deco:[880,1046],decoInt:12},
     echo:{bpm:66,chords:[[196,247,294,392],[175,220,277,349],[147,196,247,294]],dur:2.6,wave:'triangle',vol:0.3,deco:[784,988],decoInt:5},
     final:{bpm:58,chords:[[196,233,294],[185,220,277],[175,208,262],[165,196,247]],dur:3.2,wave:'sine',vol:0.36,deco:[523,659,784],decoInt:6},
