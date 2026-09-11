@@ -678,9 +678,24 @@ var AudioSys={
         var AC=window.AudioContext||window.webkitAudioContext;
         if(!AC)return null;
         this.ctx=new AC({latencyHint:'interactive'});
+        /* 主输出压缩器：消除叠加爆音，整体圆润 */
+        var mc=this.ctx.createDynamicsCompressor();
+        mc.threshold.value=-18;mc.knee.value=22;mc.ratio.value=9;mc.attack.value=0.003;mc.release.value=0.28;
+        mc.connect(this.ctx.destination);
+        this._mc=mc;
       }catch(e){return null;}
     }
     return this.ctx;
+  },
+  /* 主输出总线（所有音源过压缩器后进扬声器） */
+  master:function(c){
+    if(!this._mc){
+      var mc=c.createDynamicsCompressor();
+      mc.threshold.value=-18;mc.knee.value=22;mc.ratio.value=9;mc.attack.value=0.003;mc.release.value=0.28;
+      mc.connect(c.destination);
+      this._mc=mc;
+    }
+    return this._mc;
   },
   /* 每次打开游戏都使用默认数值（音乐50/音效60/未静音），不保留上次调整 */
   load:function(){
@@ -725,11 +740,14 @@ var AudioSys={
     if(detune)o.detune.value=detune;
     if(c.createStereoPanner&&pan){var p=c.createStereoPanner();p.pan.value=pan;o.connect(p);p.connect(g);}
     else o.connect(g);
-    g.connect(c.destination);
+    g.connect(this.master(c));
     var wc={sine:1,triangle:0.8,square:0.55,sawtooth:0.5};
     var amp=vol*(wc[o.type]||1);
+    /* ADSR 包络：起音→衰减→保持→释音，冲击与余韵兼顾 */
+    var atk=Math.min(0.014,dur*0.25),dec=Math.min(0.05,dur*0.3);
     g.gain.setValueAtTime(0.0001,t);
-    g.gain.exponentialRampToValueAtTime(amp,t+0.012);
+    g.gain.exponentialRampToValueAtTime(amp,t+atk);
+    g.gain.exponentialRampToValueAtTime(amp*0.45,t+atk+dec);
     g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     o.start(t);o.stop(t+dur+0.05);
   },
@@ -743,31 +761,35 @@ var AudioSys={
     var s=c.createBufferSource();s.buffer=buf;
     var f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=fc||800;
     var g=c.createGain();
-    g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    s.connect(f);f.connect(g);g.connect(c.destination);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol,t+0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    s.connect(f);f.connect(g);g.connect(this.master(c));
     s.start(t);s.stop(t+dur+0.05);
   },
   /* 音效库（全部实时合成） */
   sfx:function(n){
     if(!this.ctx||this.st.mute||this.st.sfx<=0)return;
     var v=this.st.sfx*0.9,now=this.ctx.currentTime,T=this.tone.bind(this),N=this.noise.bind(this);
+    /* 随机变体：±4% 频率/时长抖动，避免重复播放的听感疲劳 */
+    var J=function(x){return x*(0.96+Math.random()*0.08);};
     switch(n){
-      case 'click':T(660,0.06,'square',v*0.5,now);break;
-      case 'ok':T(523,0.18,'sine',v*0.8,now);T(659,0.18,'sine',v*0.8,now+0.07);T(784,0.18,'sine',v*0.75,now+0.14);T(1046,0.32,'sine',v*0.7,now+0.21);break;
-      case 'bad':T(494,0.22,'sawtooth',v*0.75,now);T(392,0.3,'sawtooth',v*0.75,now+0.14);T(311,0.5,'sawtooth',v*0.7,now+0.3);break;
-      case 'hurt':T(160,0.25,'sawtooth',v*0.8,now);T(110,0.4,'square',v*0.45,now+0.05);N(0.2,v*0.5,now,400);break;
-      case 'exam':T(196,0.7,'sine',v*0.65,now);T(196,0.7,'sine',v*0.4,now,0,7);T(147,1.1,'sine',v*0.4,now+0.3);break;
-      case 'dice':for(var i=0;i<5;i++)T(1400+Math.random()*800,0.05,'triangle',v*0.55,now+i*0.055);break;
-      case 'clue':T(784,0.3,'sine',v*0.6,now);T(987,0.3,'sine',v*0.6,now+0.16);T(1318,0.55,'sine',v*0.55,now+0.32);break;
-      case 'dao':T(880,0.12,'triangle',v*0.55,now);T(1320,0.25,'triangle',v*0.45,now+0.06);break;
-      case 'save':T(784,0.15,'sine',v*0.55,now);T(1175,0.3,'sine',v*0.5,now+0.1);break;
-      case 'saveFail':T(311,0.25,'sawtooth',v*0.6,now);T(233,0.4,'sawtooth',v*0.6,now+0.18);break;
-      case 'echoUp':T(196,1.2,'sine',v*0.45,now);T(247,1.2,'sine',v*0.45,now);T(294,1.2,'sine',v*0.45,now);T(392,1.4,'sine',v*0.5,now+0.4);T(494,1.6,'sine',v*0.4,now+0.9);break;
+      case 'click':T(J(660),J(0.06),'square',v*0.5,now);break;
+      case 'ok':T(J(523),J(0.18),'sine',v*0.8,now);T(J(659),J(0.18),'sine',v*0.8,now+0.07);T(J(784),J(0.18),'sine',v*0.75,now+0.14);T(J(1046),J(0.32),'sine',v*0.7,now+0.21);break;
+      case 'bad':T(J(494),J(0.22),'sawtooth',v*0.75,now);T(J(392),J(0.3),'sawtooth',v*0.75,now+0.14);T(J(311),J(0.5),'sawtooth',v*0.7,now+0.3);break;
+      case 'hurt':T(J(160),J(0.25),'sawtooth',v*0.8,now);T(J(110),J(0.4),'square',v*0.45,now+0.05);N(0.2,v*0.5,now,400);break;
+      case 'exam':T(J(196),J(0.7),'sine',v*0.65,now);T(J(196),J(0.7),'sine',v*0.4,now,0,7);T(J(147),J(1.1),'sine',v*0.4,now+0.3);break;
+      case 'dice':for(var i=0;i<5;i++)T(1400+Math.random()*800,J(0.05),'triangle',v*0.55,now+i*J(0.055));break;
+      case 'clue':T(J(784),J(0.3),'sine',v*0.6,now);T(J(987),J(0.3),'sine',v*0.6,now+0.16);T(J(1318),J(0.55),'sine',v*0.55,now+0.32);break;
+      case 'dao':T(J(880),J(0.12),'triangle',v*0.55,now);T(J(1320),J(0.25),'triangle',v*0.45,now+0.06);break;
+      case 'save':T(J(784),J(0.15),'sine',v*0.55,now);T(J(1175),J(0.3),'sine',v*0.5,now+0.1);break;
+      case 'saveFail':T(J(311),J(0.25),'sawtooth',v*0.6,now);T(J(233),J(0.4),'sawtooth',v*0.6,now+0.18);break;
+      case 'echoUp':T(196,1.2,'sine',v*0.45,now);T(247,1.2,'sine',v*0.45,now);T(294,1.2,'sine',v*0.45,now);T(J(392),1.4,'sine',v*0.5,now+0.4);T(J(494),1.6,'sine',v*0.4,now+0.9);break;
       case 'sheng':N(0.9,v*0.65,now,120);T(55,0.9,'sine',v*0.6,now);T(82,0.9,'sawtooth',v*0.3,now);break;
-      case 'loop':T(440,0.4,'sine',v*0.55,now);T(415,0.4,'sine',v*0.55,now+0.35);T(392,0.4,'sine',v*0.55,now+0.7);T(370,0.4,'sine',v*0.55,now+1.05);T(330,0.8,'sine',v*0.5,now+1.4);break;
-      case 'death':T(130,2.2,'sine',v*0.55,now);T(98,2.6,'sine',v*0.45,now+0.3);T(65,3,'sine',v*0.4,now+0.7);break;
-      case 'heart':T(65,0.12,'sine',v*0.45,now);T(60,0.12,'sine',v*0.35,now+0.14);break;
-      case 'bell':T(1046,0.9,'sine',v*0.35,now);T(1568,1.3,'sine',v*0.2,now+0.02);break;
+      case 'loop':T(J(440),J(0.4),'sine',v*0.55,now);T(J(415),J(0.4),'sine',v*0.55,now+0.35);T(J(392),J(0.4),'sine',v*0.55,now+0.7);T(J(370),J(0.4),'sine',v*0.55,now+1.05);T(J(330),J(0.8),'sine',v*0.5,now+1.4);break;
+      case 'death':T(J(130),2.2,'sine',v*0.55,now);T(J(98),2.6,'sine',v*0.45,now+0.3);T(J(65),3,'sine',v*0.4,now+0.7);break;
+      case 'heart':T(J(65),J(0.12),'sine',v*0.45,now);T(J(60),J(0.12),'sine',v*0.35,now+0.14);break;
+      case 'bell':T(J(1046),J(0.9),'sine',v*0.35,now);T(J(1568),J(1.3),'sine',v*0.2,now+0.02);break;
     }
   },
   /* 音乐场景定义 */
