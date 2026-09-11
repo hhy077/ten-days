@@ -270,16 +270,16 @@ function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 function hasI(n){return S.items.some(function(i){return i.name===n;});}
 function addI(n,d){if(!hasI(n))S.items.push({name:n,desc:d||''});tick();}
 function addC(n,d,lk){if(!S.clues.some(function(c){return c.name===n;})){S.clues.push({name:n,desc:d,lk:!!lk});AudioSys.sfx('clue');AudioSys.tempScene('clue',6500);}tick();}
-function addDao(n){S.dao+=n;ok('道点 +'+n);tick();}
-function hurt(n,r){S.hp-=n;if(r)danger(r);if(S.hp<=0){S.hp=0;tick();danger('鲜血翻涌，视线尽黑……');death();}else tick();}
+function addDao(n){S.dao+=n;ok('道点 +'+n);AudioSys.sfx('dao');tick();}
+function hurt(n,r){S.hp-=n;if(r)danger(r);if(S.hp<=0){S.hp=0;tick();danger('鲜血翻涌，视线尽黑……');death();}else{AudioSys.sfx('hurt');tick();}}
 function hurtSp(n){S.sp-=n;if(S.sp<=0){S.sp=0;sys('精神枯竭，你眼前一黑……');if(S.echo){danger(S.echo.name+'辉光熄灭——回响失效！');S.echo=null;}}tick();}
 function stopIn(){el('left').style.pointerEvents='none';}
 function allowIn(){el('left').style.pointerEvents='';}
 
 /* ---------- 死亡 & 轮回 ---------- */
-function death(){S.end=1;AudioSys.sfx('death');AudioSys.music('ending');stopIn();var fx=el('fx');fx.className='dead';
+function death(){S.end=1;AudioSys.countdown(false);AudioSys.sfx('death');AudioSys.music('ending');stopIn();var fx=el('fx');fx.className='dead';
   fx.innerHTML='<div class="shade"></div><div class="fx-text"><div class="fx-big">你 死 了</div><div class="fx-sub">血量归零 · 触发轮回冲刺</div><button class="fx-btn" onclick="Game.rush()">轮回冲刺</button></div>';}
-function rushSeq(){var fx=el('fx');fx.className='rush';var ch='终焉轮回冲刺',i=0;
+function rushSeq(){AudioSys.sfx('loop');AudioSys.sfx('flow');var fx=el('fx');fx.className='rush';var ch='终焉轮回冲刺',i=0;
   var iv=setInterval(function(){if(i>=ch.length){clearInterval(iv);setTimeout(doLoop,550);return;}
     fx.innerHTML='<div class="fx-text"><div class="fx-big" style="font-size:88px">'+ch[i]+'</div></div>';i++;},210);}
 function doLoop(){
@@ -727,10 +727,57 @@ var AudioSys={
     else m.textContent='当前：音频引擎运行中 · 音乐 '+Math.round(this.st.music*100)+'% · 音效 '+Math.round(this.st.sfx*100)+'%。';
   },
   setMusic:function(v){v=Math.max(0,Math.min(100,v|0));this.st.music=v/100;this.save();var d=el('auMusicV');if(d)d.textContent=v+'%';this.musicUpdate();},
-  setSfx:function(v){v=Math.max(0,Math.min(100,v|0));this.st.sfx=v/100;this.save();var d=el('auSfxV');if(d)d.textContent=v+'%';},
+  setSfx:function(v){v=Math.max(0,Math.min(100,v|0));this.st.sfx=v/100;this.save();var d=el('auSfxV');if(d)d.textContent=v+'%';/* 场景噪声层音量跟随音效滑块实时调节 */var ls=this._layers||{};for(var k in ls){try{ls[k].g.gain.value=(k==='whisper'?0.03:0.14)*this.st.sfx;}catch(e){}}},
   /* 松开音乐滑块后重启当前场景，使新音量立即生效 */
   applyMusic:function(){this.music('');this.musicUpdate();},
-  setMute:function(b){this.st.mute=b;this.save();if(b){this.music('');}else{this.musicUpdate();}},
+  /* 终局倒计时滴答（每秒一声），on/off 严格配对管理生命周期 */
+  countdown:function(on){
+    var self=this;
+    if(on){
+      if(this._cd)return;
+      this.sfx('tick');
+      this._cd=setInterval(function(){self.sfx('tick');},1000);
+    }else{
+      if(this._cd){clearInterval(this._cd);this._cd=null;}
+    }
+  },
+  /* 持续噪声层（面试窃语 / 巨声低轰）：开关严格配对，切场景/静音/停音乐时统一清理，杜绝幽灵噪声 */
+  _noiseBuf:function(c){
+    if(!this._nb){
+      var len=c.sampleRate*2,b=c.createBuffer(1,len,c.sampleRate),d=b.getChannelData(0);
+      for(var i=0;i<len;i++)d[i]=Math.random()*2-1;
+      this._nb=b;
+    }
+    return this._nb;
+  },
+  layer:function(name,on){
+    var c=this.ctx;if(!c)return;
+    this._layers=this._layers||{};
+    if(on){
+      if(this._layers[name])return;
+      try{
+        var src=c.createBufferSource();src.loop=true;src.buffer=this._noiseBuf(c);
+        var f=c.createBiquadFilter(),g=c.createGain();
+        if(name==='whisper'){f.type='bandpass';f.frequency.value=1800;f.Q.value=1.4;g.gain.value=0.03*this.st.sfx;}
+        else{f.type='lowpass';f.frequency.value=85;g.gain.value=0.14*this.st.sfx;}
+        src.connect(f);f.connect(g);g.connect(this.master(c));
+        src.start();
+        this._layers[name]={src:src,f:f,g:g};
+      }catch(e){}
+    }else{
+      var l=this._layers[name];
+      if(l){
+        try{l.src.stop();}catch(e){}
+        try{l.src.disconnect();l.f.disconnect();l.g.disconnect();}catch(e){}
+        delete this._layers[name];
+      }
+    }
+  },
+  layersOff:function(){
+    var ks=this._layers?Object.keys(this._layers):[];
+    for(var i=0;i<ks.length;i++)this.layer(ks[i],false);
+  },
+  setMute:function(b){this.st.mute=b;this.save();if(b){this.layersOff();this.music('');}else{this.musicUpdate();}},
   /* 单音 */
   tone:function(f,dur,type,vol,when,pan,detune){
     var c=this.ensure();if(!c||this.st.mute||vol<=0)return;
@@ -790,6 +837,10 @@ var AudioSys={
       case 'death':T(J(130),2.2,'sine',v*0.55,now);T(J(98),2.6,'sine',v*0.45,now+0.3);T(J(65),3,'sine',v*0.4,now+0.7);break;
       case 'heart':T(J(65),J(0.12),'sine',v*0.45,now);T(J(60),J(0.12),'sine',v*0.35,now+0.14);break;
       case 'bell':T(J(1046),J(0.9),'sine',v*0.35,now);T(J(1568),J(1.3),'sine',v*0.2,now+0.02);break;
+      case 'tick':T(J(1500),0.04,'square',v*0.32,now);break;
+      case 'drum':N(0.32,v*0.45,now,150);N(0.32,v*0.5,now+0.42,180);N(0.42,v*0.6,now+0.86,220);break;
+      case 'page':N(0.1,v*0.4,now,3200);N(0.07,v*0.3,now+0.12,2600);break;
+      case 'flow':N(1.6,v*0.4,now,500);T(196,1.6,'sine',v*0.35,now);T(330,1.6,'sine',v*0.3,now+0.35);T(494,1.8,'sine',v*0.25,now+0.8);break;
     }
   },
   /* 音乐场景定义 */
@@ -811,6 +862,9 @@ var AudioSys={
     this.cur=name;
     if(this.timer){clearInterval(this.timer);this.timer=null;}
     this._nextT=0;
+    /* 场景音效层与音乐严格联动：切场景即清旧层、入场景即开新层，杜绝幽灵噪声 */
+    this.layer('whisper',name==='exam');
+    this.layer('rumble',name==='sheng');
     if(!name||!this.ctx||this.st.mute)return;
     var sc=this.scenes[name];if(!sc)return;
     var self=this,i=0;
@@ -822,10 +876,13 @@ var AudioSys={
     var now=c.currentTime,look=now+1.4;
     if(this._nextT<now-0.2)this._nextT=now+0.15;
     var barDur=sc.dur;
+    var hpLv=(this.cur==='daily'||this.cur==='echo'||this.cur==='intro'||this.cur==='menu')?this.hpLevel():0;
     while(this._nextT<look){
       var ch=sc.chords[Math.floor(this._nextT/barDur)%sc.chords.length];
       var v=sc.vol*this.st.music;
       for(var j=0;j<ch.length;j++)T(ch[j],barDur*1.2,sc.wave,v/ch.length,this._nextT,(j-1)*0.03);
+      if(hpLv>=1)T(ch[0]/2,barDur*1.1,'sine',v*0.5,this._nextT);
+      if(hpLv>=2&&Math.floor(this._nextT/barDur)%2===0){T(62,0.12,'sine',v*0.4,this._nextT);T(57,0.12,'sine',v*0.28,this._nextT+0.16);}
       if(sc.rumble)this.noise(barDur*1.1,v*0.4,this._nextT,90);
       if(sc.heart&&Math.floor(this._nextT/barDur)%2===0){T(62,0.12,'sine',v*0.4,this._nextT);T(57,0.12,'sine',v*0.28,this._nextT+0.16);}
       if(sc.decoInt>0&&sc.deco&&sc.deco[0]&&Math.floor(this._nextT/barDur)%sc.decoInt===0){
@@ -834,6 +891,14 @@ var AudioSys={
       }
       this._nextT+=barDur;
     }
+  },
+  /* 血条联动：hp 越低音乐越紧（低音层 → 心跳层）。只作用于日常非强制场景；随音符调度自然渐变，不重启音乐 */
+  hpLevel:function(){
+    if(!S||S.end||!S.hp)return 0;
+    var r=S.hp/80;
+    if(r<=0.2)return 2;
+    if(r<=0.4)return 1;
+    return 0;
   },
   /* 临时切场景（如发现真相碎片时的诡异氛围），到期自动恢复 */
   tempScene:function(name,ms){
@@ -899,7 +964,7 @@ document.addEventListener('click',function(e){
 /* ---------- 主控制器 ---------- */
 var Game={
   newGame:function(){S=baseState();el('menu').style.display='none';el('app').style.display='flex';showUI();prologue();},
-  openMenu:function(){if(S.end)return;el('menu').style.display='flex';el('app').style.display='none';Game.refreshSaves();},
+  openMenu:function(){if(S.end)return;el('menu').style.display='flex';el('app').style.display='none';Game.refreshSaves();AudioSys.musicUpdate();},
   resume:function(){el('menu').style.display='none';el('app').style.display='flex';renderQB();},
   refreshSaves:function(){var pf=userPrefix();el('savelist').innerHTML=(function(){
     var k=Object.keys(localStorage).filter(function(x){return x.indexOf(pf)===0;}).sort(function(a,b){return (+a.slice(pf.length))-(+b.slice(pf.length));});
@@ -925,7 +990,8 @@ var Game={
     el('tab'+t[0].toUpperCase()+t.slice(1)).classList.add('active');
     el('panelInv').style.display=t==='inv'?'block':'none';
     el('panelClue').style.display=t==='clue'?'block':'none';
-    el('panelTem').style.display=t==='tem'?'block':'none';},
+    el('panelTem').style.display=t==='tem'?'block':'none';
+    if(t==='clue')AudioSys.sfx('page');},
   pact:function(){pactAssist();},
   lore:function(){el('lore').classList.add('show');Game.loreTab(0);},
   loreClose:function(){el('lore').classList.remove('show');},
@@ -966,6 +1032,7 @@ function handleSpeech(v){
 function openExam(examiner,questions,onEnd){
   S.exam={examiner:examiner,qIdx:0,questions:questions,onEnd:onEnd};
   AudioSys.sfx('exam');
+  AudioSys.musicUpdate();
   talk(examiner,'你只觉一颗心在胸腔里擂鼓。他缓缓开口——');
   askQ();
 }
