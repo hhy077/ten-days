@@ -268,7 +268,7 @@ function brk(){out({t:'center',x:'—— ✦ ——'});}
 function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 function hasI(n){return S.items.some(function(i){return i.name===n;});}
 function addI(n,d){if(!hasI(n))S.items.push({name:n,desc:d||''});tick();}
-function addC(n,d,lk){if(!S.clues.some(function(c){return c.name===n;}))S.clues.push({name:n,desc:d,lk:!!lk});tick();}
+function addC(n,d,lk){if(!S.clues.some(function(c){return c.name===n;})){S.clues.push({name:n,desc:d,lk:!!lk});AudioSys.sfx('clue');AudioSys.tempScene('clue',6500);}tick();}
 function addDao(n){S.dao+=n;ok('道点 +'+n);tick();}
 function hurt(n,r){S.hp-=n;if(r)danger(r);if(S.hp<=0){S.hp=0;tick();danger('鲜血翻涌，视线尽黑……');death();}else tick();}
 function hurtSp(n){S.sp-=n;if(S.sp<=0){S.sp=0;sys('精神枯竭，你眼前一黑……');if(S.echo){danger(S.echo.name+'辉光熄灭——回响失效！');S.echo=null;}}tick();}
@@ -763,6 +763,7 @@ var AudioSys={
     menu:{bpm:52,chords:[[220,277,330],[196,247,311],[174,220,262],[146,185,220]],dur:3.6,wave:'sine',vol:0.32,deco:[523,784],decoInt:9},
     intro:{bpm:48,chords:[[392,494,587],[330,415,494],[294,370,440]],dur:4,wave:'sine',vol:0.22,deco:[0],decoInt:0},
     daily:{bpm:60,chords:[[220,262,330],[196,233,294],[174,220,262],[165,208,247]],dur:2.8,wave:'triangle',vol:0.26,deco:[659,880],decoInt:7},
+    clue:{bpm:44,chords:[[147,208,247],[131,185,233],[110,165,196,262]],dur:3.4,wave:'sine',vol:0.22,deco:[311,466],decoInt:6},
     exam:{bpm:84,chords:[[147,175,220],[131,165,196],[139,165,196],[147,175,220]],dur:2.2,wave:'sawtooth',vol:0.2,deco:[392,494],decoInt:4,heart:true},
     sheng:{bpm:120,chords:[[110,165,220]],dur:1.2,wave:'sawtooth',vol:0.28,deco:[0],decoInt:0,rumble:true},
     silent:{bpm:40,chords:[[220,440,660],[208,392,622],[196,370,587]],dur:4,wave:'sine',vol:0.16,deco:[880,1046],decoInt:12},
@@ -800,11 +801,21 @@ var AudioSys={
       this._nextT+=barDur;
     }
   },
+  /* 临时切场景（如发现真相碎片时的诡异氛围），到期自动恢复 */
+  tempScene:function(name,ms){
+    var c=this.ensure();if(!c)return;
+    this._temp={name:name,until:c.currentTime+((ms||6000)/1000)};
+    this.music(name);
+    var self=this;
+    if(this._tempT)clearTimeout(this._tempT);
+    this._tempT=setTimeout(function(){self._temp=null;self.musicUpdate();},(ms||6000)+200);
+  },
   /* 依据游戏状态自动选择场景 */
   musicUpdate:function(){
     var m=el('menu');
     if(this.st.mute){this.music('');return;}
     if(!this.ctx){this.music('');return;}
+    var inTemp=this._temp&&this.ctx.currentTime<this._temp.until;
     var name;
     if(m&&m.style.display!=='none')name='menu';
     else if(S&&S.end)name='ending';
@@ -816,9 +827,11 @@ var AudioSys={
       else name='exam';
     }
     else if(S&&(S.flags.c4||S.day>=9||S.day===10))name='final';
+    else if(inTemp)name=this._temp.name;
     else if(S&&S.echo)name='echo';
     else if(S&&S.day<=1)name='intro';
     else name='daily';
+    if(!inTemp&&this._temp)this._temp=null;
     this.music(name);
   }
 };
@@ -978,6 +991,7 @@ function echoSolve(q){
     var e=S.exam;if(e){e.qIdx++;askQ();}
   }else{
     danger(S.echo.name+' 一线不稳——回响失败！');
+    AudioSys.sfx('bad');
     if(!noFade&&rand(1,100)<=55){danger('回响熄灭，记忆如沙散落。');S.echo=null;tick();}
     else if(S.echo.name==='【生生不息】'){nar('——可「生生不息」不熄。一线不稳的余烬，转瞬又燃了回来。');}
     else if(S.echo.name==='【强运】'){nar('——强运加身，一线不稳的运道转瞬又把你托住。');}
@@ -2231,6 +2245,7 @@ function winRush(){
   },300);
 }
 function endingButtons(){
+  AudioSys.musicUpdate();
   pushBtn({label:'结束结局 · 轮回再启',fn:function(){rushSeq();}});
   renderQB();
 }
