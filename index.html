@@ -727,7 +727,7 @@ var AudioSys={
     else m.textContent='当前：音频引擎运行中 · 音乐 '+Math.round(this.st.music*100)+'% · 音效 '+Math.round(this.st.sfx*100)+'%。';
   },
   setMusic:function(v){v=Math.max(0,Math.min(100,v|0));this.st.music=v/100;this.save();var d=el('auMusicV');if(d)d.textContent=v+'%';this.musicUpdate();},
-  setSfx:function(v){v=Math.max(0,Math.min(100,v|0));this.st.sfx=v/100;this.save();var d=el('auSfxV');if(d)d.textContent=v+'%';/* 场景噪声层音量跟随音效滑块实时调节 */var ls=this._layers||{};for(var k in ls){try{ls[k].g.gain.value=(k==='whisper'?0.03:0.14)*this.st.sfx;}catch(e){}}},
+  setSfx:function(v){v=Math.max(0,Math.min(100,v|0));this.st.sfx=v/100;this.save();var d=el('auSfxV');if(d)d.textContent=v+'%';/* 场景噪声层音量跟随音效滑块实时调节 */var ls=this._layers||{};for(var k in ls){try{ls[k].g.gain.value=(k==='whisper'?0.03:0.07)*this.st.sfx;}catch(e){}}},
   /* 松开音乐滑块后重启当前场景，使新音量立即生效 */
   applyMusic:function(){this.music('');this.musicUpdate();},
   /* 终局倒计时滴答（每秒一声），on/off 严格配对管理生命周期 */
@@ -759,7 +759,7 @@ var AudioSys={
         var src=c.createBufferSource();src.loop=true;src.buffer=this._noiseBuf(c);
         var f=c.createBiquadFilter(),g=c.createGain();
         if(name==='whisper'){f.type='bandpass';f.frequency.value=1800;f.Q.value=1.4;g.gain.value=0.03*this.st.sfx;}
-        else{f.type='lowpass';f.frequency.value=85;g.gain.value=0.14*this.st.sfx;}
+        else{f.type='lowpass';f.frequency.value=85;g.gain.value=0.07*this.st.sfx;}
         src.connect(f);f.connect(g);g.connect(this.master(c));
         src.start();
         this._layers[name]={src:src,f:f,g:g};
