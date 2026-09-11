@@ -1273,9 +1273,11 @@ function sl1(){brk();nar('你闭上眼。门外的铃声滴滴答答，一夜过
 
 /* ---------- 推进 ---------- */
 function advanceDay(){S.day++;tick();if(S.day>10){sys('（第十日已尽。）');finalDay();return;}dayIntro();}
-function dayIntro(){
-  big('—— 第 '+S.day+' 日 ——');
-  nar('惨白的灯光又亮起，铃声依旧滴滴答答。');
+function dayIntro(menuOnly){
+  if(!menuOnly){
+    big('—— 第 '+S.day+' 日 ——');
+    nar('惨白的灯光又亮起，铃声依旧滴滴答答。');
+  }
   if(S.cycle>=3){addC('周目记忆','三周目之上，你隐约记起考官的某些破绽，与隐藏的真话。',true);}
   if(S.day>=3&&!S.flags.c2){chapter2();return;}
   if(S.day>=6&&!S.flags.c3){rechapter3();return;}
@@ -1324,13 +1326,13 @@ function suzhan(){
       nar('他沉默了很久。你看见他臂上的烙铁疤在惨白灯光下微微发亮——那不是受刑的疤，是自愿烙上的。每一道，代表一轮逝去的队友。');
       talk('肃战','你替我挡过一刀，我就信你。挡不了，就当我没说过这些。');
       S.tai.bond+=5;tick();
-      pushBtn({label:'告辞肃战',fn:function(){nar('他重新闭上眼，像一尊石。');dayIntro();}});}});
+      pushBtn({label:'告辞肃战',fn:function(){nar('他重新闭上眼，像一尊石。');dayIntro(true);}});}});
   }});
   pushBtn({label:'「不打扰你了。」转身离开',fn:function(){
     nar('你转身。身后传来一句极低的话：');
     talk('肃战','……你脚步轻，左脚不拖地。你没受过伤。好好的，别来这地方。');
     addC('肃战的注目','他注意到了你没受伤。临别那句话，像是某种笨拙的善意。',false);
-    dayIntro();}});
+    dayIntro(true);}});
 }
 
 /* ---------- 第二章：生背试炼（第 3 日起） ---------- */
@@ -1351,9 +1353,9 @@ function chapter2(){
      good:function(){ok('考官·巨声：“好一个不矛盾。”');ghost('乔家劲在旁暗暗给你比了个大拇指。');S.tai.bond+=8;tick();},
      bad:function(){hurt(40,'考官·巨声：“世间本无两全。答错，就得死。”');}}
   ],function(){S.flags.c2=1;talk('考官·巨声','试炼未央，退下。');ok('—— 生背试炼上半通过 ——');
-    pushBtn({label:'分析巨声考官',fn:function(){addC('巨声的破绽','他反复试探你是否慌乱。此考官憎恶慌乱之人。');nar('你记下了巨声考官的话语节奏。');if(!S.f_doc){pushBtn({label:'翻考官落下的旧公文',fn:gongwen});}pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,5);advanceChain_rech3();}});}});
+    pushBtn({label:'分析巨声考官',fn:function(){addC('巨声的破绽','他反复试探你是否慌乱。此考官憎恶慌乱之人。');nar('你记下了巨声考官的话语节奏。');if(!S.f_doc){pushBtn({label:'翻考官落下的旧公文',fn:gongwen});}pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,4);advanceChain_rech3();}});}});
     if(!S.f_doc){pushBtn({label:'翻考官落下的旧公文',fn:gongwen});}
-    pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,5);advanceChain_rech3();}});});
+    pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,4);advanceChain_rech3();}});});
 }
 /* 支线：巨声考官的旧公文 */
 function gongwen(){
@@ -1364,8 +1366,8 @@ function gongwen(){
   addC('考官·声台的私心','巨声真名「声台」。家中亦有困于无常的稚子，畏极故声大。',true,1);
   S.dao+=15;tick();
   talk('乔家劲','啧，原来这大嗓门，也有怕的东西。人这东西，都他妈是纸糊的。');
-  pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,5);advanceChain_rech3();}});}
-/* 转场到无面考官（第 5-6 日） */
+  pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,4);advanceChain_rech3();}});}
+/* 转场到无面考官（第 4 日） */
 function advanceChain_rech3(){rechapter3();}
 function rechapter3(){
   clearBtn();S.day=Math.min(S.day,6);
