@@ -679,7 +679,6 @@ var AudioSys={
         this.ctx=new AC({latencyHint:'interactive'});
       }catch(e){return null;}
     }
-    if(this.ctx.state==='suspended'){try{this.ctx.resume();}catch(e){}}
     return this.ctx;
   },
   load:function(){
@@ -700,8 +699,8 @@ var AudioSys={
     var m=el('auMsg');if(!m)return;
     if(!(window.AudioContext||window.webkitAudioContext))m.textContent='⚠ 当前浏览器不支持 Web Audio，无法发声。';
     else if(this.st.mute)m.textContent='当前：全部静音（点击「静音」取消勾选）。';
-    else if(!this.ctx)m.textContent='当前：音频引擎未启动。请先点击任意按钮开始游戏。';
-    else if(this.ctx.state==='suspended')m.textContent='当前：音频引擎挂起（浏览器策略）。请再次点击任意按钮唤醒。';
+    else if(!this.ctx)m.textContent='当前：音频引擎未启动。请点击任意按钮开始。';
+    else if(this.ctx.state==='suspended')m.textContent='当前：音频引擎挂起（浏览器策略）。请点击任意按钮唤醒，若仍挂起可刷新页面重试。';
     else m.textContent='当前：音频引擎运行中 · 音乐 '+Math.round(this.st.music*100)+'% · 音效 '+Math.round(this.st.sfx*100)+'%。';
   },
   setMusic:function(v){this.st.music=v/100;this.save();this.musicUpdate();},
@@ -822,25 +821,32 @@ var AudioSys={
     this.music(name);
   }
 };
-/* 首次交互解锁音频（pointerdown/touchstart 比 click 更早、移动端更可靠）+ 按钮点击音效 */
+/* 首次交互解锁音频（仅限用户手势的同步调用栈内唤醒，符合浏览器自动播放策略） */
 function __audioBoot(){
-  if(!AudioSys.ctx)AudioSys.ensure();
-  if(AudioSys.ctx&&AudioSys.ctx.state==='suspended'){try{AudioSys.ctx.resume();}catch(e){}}
+  var AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)return;
+  if(!AudioSys.ctx){try{AudioSys.ctx=new AC({latencyHint:'interactive'});}catch(e){}}
+  var c=AudioSys.ctx;if(!c)return;
+  if(c.state==='suspended'){
+    try{c.resume();}catch(e){}
+    if(c.state==='suspended'){
+      /* resume 被拒（旧引擎可能曾被策略锁定）→ 手势栈内重建新引擎 */
+      try{c.close();}catch(e){}
+      try{AudioSys.ctx=new AC({latencyHint:'interactive'});}catch(e){}
+      c=AudioSys.ctx;
+      if(c&&c.state==='suspended'){try{c.resume();}catch(e){}}
+    }
+  }
+  if(c&&c.state==='running')AudioSys.musicUpdate();
 }
 document.addEventListener('pointerdown',__audioBoot,true);
 document.addEventListener('touchstart',__audioBoot,true);
+document.addEventListener('keydown',__audioBoot,true);
 document.addEventListener('click',function(e){
   __audioBoot();
   var t=e.target;
   if(t&&t.closest&&t.closest('button,.menu-btn,.qbtn,.fx-btn,.btn-mini'))AudioSys.sfx('click');
 },true);
-/* 自动恢复：若引擎被浏览器挂起且用户已交互过，自动唤醒并续播音乐 */
-setInterval(function(){
-  if(AudioSys.ctx&&AudioSys.ctx.state==='suspended'&&navigator.userActivation&&navigator.userActivation.hasBeenActive){
-    try{AudioSys.ctx.resume();}catch(e){}
-  }
-  if(AudioSys.cur&&AudioSys.ctx&&AudioSys.ctx.state==='running'&&!AudioSys.timer)AudioSys.musicUpdate();
-},2000);
 
 /* ---------- 主控制器 ---------- */
 var Game={
