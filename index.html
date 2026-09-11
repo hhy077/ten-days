@@ -727,7 +727,7 @@ var AudioSys={
     else m.textContent='当前：音频引擎运行中 · 音乐 '+Math.round(this.st.music*100)+'% · 音效 '+Math.round(this.st.sfx*100)+'%。';
   },
   setMusic:function(v){v=Math.max(0,Math.min(100,v|0));this.st.music=v/100;this.save();var d=el('auMusicV');if(d)d.textContent=v+'%';this.musicUpdate();},
-  setSfx:function(v){v=Math.max(0,Math.min(100,v|0));this.st.sfx=v/100;this.save();var d=el('auSfxV');if(d)d.textContent=v+'%';/* 场景噪声层音量跟随音效滑块实时调节 */var ls=this._layers||{};for(var k in ls){try{ls[k].g.gain.value=(k==='whisper'?0.03:0.07)*this.st.sfx;}catch(e){}}},
+  setSfx:function(v){v=Math.max(0,Math.min(100,v|0));this.st.sfx=v/100;this.save();var d=el('auSfxV');if(d)d.textContent=v+'%';/* 场景噪声层音量跟随音效滑块实时调节 */var ls=this._layers||{};for(var k in ls){try{ls[k].g.gain.value=(k==='whisper'?0.03:0.05)*this.st.sfx;}catch(e){}}},
   /* 松开音乐滑块后重启当前场景，使新音量立即生效 */
   applyMusic:function(){this.music('');this.musicUpdate();},
   /* 终局倒计时滴答（每秒一声），on/off 严格配对管理生命周期 */
@@ -745,7 +745,15 @@ var AudioSys={
   _noiseBuf:function(c){
     if(!this._nb){
       var len=c.sampleRate*2,b=c.createBuffer(1,len,c.sampleRate),d=b.getChannelData(0);
-      for(var i=0;i<len;i++)d[i]=Math.random()*2-1;
+      /* 粉红噪声（1/f）：低频厚实、高频柔和，替代白噪声消除"嘶嘶乱码"感 */
+      var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,w;
+      for(var i=0;i<len;i++){
+        w=Math.random()*2-1;
+        b0=0.99886*b0+w*0.0555179;b1=0.99332*b1+w*0.0750759;b2=0.96900*b2+w*0.1538520;
+        b3=0.86650*b3+w*0.3104856;b4=0.55000*b4+w*0.5329522;b5=-0.7616*b5-w*0.0168980;
+        d[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11;
+        b6=w*0.115926;
+      }
       this._nb=b;
     }
     return this._nb;
@@ -758,8 +766,8 @@ var AudioSys={
       try{
         var src=c.createBufferSource();src.loop=true;src.buffer=this._noiseBuf(c);
         var f=c.createBiquadFilter(),g=c.createGain();
-        if(name==='whisper'){f.type='bandpass';f.frequency.value=1800;f.Q.value=1.4;g.gain.value=0.03*this.st.sfx;}
-        else{f.type='lowpass';f.frequency.value=85;g.gain.value=0.07*this.st.sfx;}
+        if(name==='whisper'){f.type='bandpass';f.frequency.value=1800;f.Q.value=2;g.gain.value=0.03*this.st.sfx;}
+        else{f.type='lowpass';f.frequency.value=70;g.gain.value=0.05*this.st.sfx;}
         src.connect(f);f.connect(g);g.connect(this.master(c));
         src.start();
         this._layers[name]={src:src,f:f,g:g};
@@ -804,7 +812,15 @@ var AudioSys={
     var t=when||c.currentTime;
     var len=Math.max(1,(dur*c.sampleRate)|0);
     var buf=c.createBuffer(1,len,c.sampleRate),d=buf.getChannelData(0);
-    for(var i=0;i<len;i++)d[i]=Math.random()*2-1;
+    /* 粉红噪声：鼓点/翻页/轰响等噪声音效更自然，不再像静电乱码 */
+    var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,w;
+    for(var i=0;i<len;i++){
+      w=Math.random()*2-1;
+      b0=0.99886*b0+w*0.0555179;b1=0.99332*b1+w*0.0750759;b2=0.96900*b2+w*0.1538520;
+      b3=0.86650*b3+w*0.3104856;b4=0.55000*b4+w*0.5329522;b5=-0.7616*b5-w*0.0168980;
+      d[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11;
+      b6=w*0.115926;
+    }
     var s=c.createBufferSource();s.buffer=buf;
     var f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=fc||800;
     var g=c.createGain();
