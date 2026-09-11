@@ -681,8 +681,10 @@ var AudioSys={
         /* 主输出压缩器：消除叠加爆音，整体圆润 */
         var mc=this.ctx.createDynamicsCompressor();
         mc.threshold.value=-18;mc.knee.value=22;mc.ratio.value=9;mc.attack.value=0.003;mc.release.value=0.28;
-        mc.connect(this.ctx.destination);
+        var hs=this.ctx.createBiquadFilter();hs.type='highshelf';hs.frequency.value=10000;hs.gain.value=-3;
+        mc.connect(hs);hs.connect(this.ctx.destination);
         this._mc=mc;
+        this._buildSpace(this.ctx,mc);
       }catch(e){return null;}
     }
     return this.ctx;
@@ -692,10 +694,31 @@ var AudioSys={
     if(!this._mc){
       var mc=c.createDynamicsCompressor();
       mc.threshold.value=-18;mc.knee.value=22;mc.ratio.value=9;mc.attack.value=0.003;mc.release.value=0.28;
-      mc.connect(c.destination);
+      var hs=c.createBiquadFilter();hs.type='highshelf';hs.frequency.value=10000;hs.gain.value=-3;
+      mc.connect(hs);hs.connect(c.destination);
       this._mc=mc;
+      this._buildSpace(c,mc);
     }
     return this._mc;
+  },
+  /* 空间感总线：双抽头反馈延迟+低通，混入少量干声营造环境回响（乐音送32%、噪声送13%防糊） */
+  _buildSpace:function(c,out){
+    if(this._space)return;
+    var wet=c.createGain();wet.gain.value=0.16;wet.connect(out);
+    var mk=function(dt,fb){
+      var dl=c.createDelay(1);dl.delayTime.value=dt;
+      var fg=c.createGain();fg.gain.value=fb;
+      var lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2200;
+      dl.connect(fg);fg.connect(lp);lp.connect(dl);
+      lp.connect(wet);
+      return dl;
+    };
+    var d1=mk(0.13,0.42),d2=mk(0.21,0.32);
+    var sT=c.createGain();sT.gain.value=0.32;
+    var sN=c.createGain();sN.gain.value=0.13;
+    sT.connect(d1);sT.connect(d2);
+    sN.connect(d1);sN.connect(d2);
+    this._space=sT;this._spaceN=sN;
   },
   /* 每次打开游戏都使用默认数值（音乐50/音效60/未静音），不保留上次调整 */
   load:function(){
@@ -796,10 +819,11 @@ var AudioSys={
     if(c.createStereoPanner&&pan){var p=c.createStereoPanner();p.pan.value=pan;o.connect(p);p.connect(g);}
     else o.connect(g);
     g.connect(this.master(c));
+    if(this._space)g.connect(this._space);
     var wc={sine:1,triangle:0.8,square:0.55,sawtooth:0.5};
     var amp=vol*(wc[o.type]||1);
     /* ADSR 包络：起音→衰减→保持→释音，冲击与余韵兼顾 */
-    var atk=Math.min(0.014,dur*0.25),dec=Math.min(0.05,dur*0.3);
+    var atk=Math.min(0.02,dur*0.28),dec=Math.min(0.06,dur*0.3);
     g.gain.setValueAtTime(0.0001,t);
     g.gain.exponentialRampToValueAtTime(amp,t+atk);
     g.gain.exponentialRampToValueAtTime(amp*0.45,t+atk+dec);
@@ -825,9 +849,10 @@ var AudioSys={
     var f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=fc||800;
     var g=c.createGain();
     g.gain.setValueAtTime(0.0001,t);
-    g.gain.exponentialRampToValueAtTime(vol,t+0.005);
+    g.gain.exponentialRampToValueAtTime(vol,t+0.01);
     g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     s.connect(f);f.connect(g);g.connect(this.master(c));
+    if(this._spaceN)g.connect(this._spaceN);
     s.start(t);s.stop(t+dur+0.05);
   },
   /* 纸张翻页声（带通+扫频）：真正的"沙"声而非全频带噪爆音，消除乱码感 */
@@ -850,9 +875,10 @@ var AudioSys={
     f.frequency.exponentialRampToValueAtTime(f1,t+dur);
     var g=c.createGain();
     g.gain.setValueAtTime(0.0001,t);
-    g.gain.exponentialRampToValueAtTime(vol,t+0.008);
+    g.gain.exponentialRampToValueAtTime(vol,t+0.012);
     g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
     s.connect(f);f.connect(g);g.connect(this.master(c));
+    if(this._spaceN)g.connect(this._spaceN);
     s.start(t);s.stop(t+dur+0.05);
   },
   /* 音效库（全部实时合成） */
