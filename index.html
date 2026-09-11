@@ -917,7 +917,7 @@ var AudioSys={
     daily:{bpm:60,chords:[[220,262,330],[196,233,294],[174,220,262],[165,208,247]],dur:2.8,wave:'triangle',vol:0.32,deco:[659,880],decoInt:7},
     clue:{bpm:44,chords:[[147,208,247],[131,185,233],[110,165,196,262]],dur:3.4,wave:'sine',vol:0.28,deco:[311,466],decoInt:6},
     exam:{bpm:84,chords:[[147,175,220],[131,165,196],[139,165,196],[147,175,220]],dur:2.2,wave:'sawtooth',vol:0.26,deco:[392,494],decoInt:4,heart:true},
-    sheng:{bpm:120,chords:[[110,165,220]],dur:1.2,wave:'sawtooth',vol:0.26,deco:[0],decoInt:0,rumble:true},
+    sheng:{bpm:84,chords:[[82,164,247]],dur:2.0,wave:'triangle',vol:0.3,deco:[0],decoInt:0,toll:true},
     silent:{bpm:40,chords:[[220,440,660],[208,392,622],[196,370,587]],dur:4,wave:'sine',vol:0.2,deco:[880,1046],decoInt:12},
     echo:{bpm:66,chords:[[196,247,294,392],[175,220,277,349],[147,196,247,294]],dur:2.6,wave:'triangle',vol:0.3,deco:[784,988],decoInt:5},
     final:{bpm:58,chords:[[196,233,294],[185,220,277],[175,208,262],[165,196,247]],dur:3.2,wave:'sine',vol:0.36,deco:[523,659,784],decoInt:6},
@@ -950,6 +950,7 @@ var AudioSys={
       for(var j=0;j<ch.length;j++)T(ch[j],barDur*1.2,sc.wave,v/ch.length,this._nextT,(j-1)*0.03);
       if(hpLv>=1)T(ch[0]/2,barDur*1.1,'sine',v*0.5,this._nextT);
       if(hpLv>=2&&Math.floor(this._nextT/barDur)%2===0){T(62,0.12,'sine',v*0.4,this._nextT);T(57,0.12,'sine',v*0.28,this._nextT+0.16);}
+      if(sc.toll){T(58,barDur*1.3,'sine',v*0.62,this._nextT);T(117,barDur*1.15,'sine',v*0.4,this._nextT+0.04);T(175,barDur*1.5,'sine',v*0.26,this._nextT+0.08);}
       if(sc.rumble)this.noise(barDur*1.1,v*0.4,this._nextT,90);
       if(sc.heart&&Math.floor(this._nextT/barDur)%2===0){T(62,0.12,'sine',v*0.4,this._nextT);T(57,0.12,'sine',v*0.28,this._nextT+0.16);}
       if(sc.decoInt>0&&sc.deco&&sc.deco[0]&&Math.floor(this._nextT/barDur)%sc.decoInt===0){
