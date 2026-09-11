@@ -715,6 +715,7 @@ var AudioSys={
     if(detune)o.detune.value=detune;
     if(c.createStereoPanner&&pan){var p=c.createStereoPanner();p.pan.value=pan;o.connect(p);p.connect(g);}
     else o.connect(g);
+    g.connect(c.destination);
     g.gain.setValueAtTime(0.0001,t);
     g.gain.exponentialRampToValueAtTime(vol,t+0.012);
     g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
