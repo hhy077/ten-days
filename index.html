@@ -168,8 +168,8 @@ body{background:#050505;color:var(--bone);font-family:"SimSun","STKaiti","KaiTi"
 <div id="audioSet" onclick="if(event.target===this)AudioSys.close()">
   <div class="login-box">
     <h3>声 韵 · 设 置</h3>
-    <div class="lf-row"><label>音乐</label><input id="auMusic" type="range" min="0" max="100" value="60" oninput="AudioSys.setMusic(+this.value)" onchange="AudioSys.applyMusic()"><b class="auVal" id="auMusicV">60%</b></div>
-    <div class="lf-row"><label>音效</label><input id="auSfx" type="range" min="0" max="100" value="50" oninput="AudioSys.setSfx(+this.value)"><b class="auVal" id="auSfxV">50%</b></div>
+    <div class="lf-row"><label>音乐</label><input id="auMusic" type="range" min="0" max="100" value="50" oninput="AudioSys.setMusic(+this.value)" onchange="AudioSys.applyMusic()"><b class="auVal" id="auMusicV">50%</b></div>
+    <div class="lf-row"><label>音效</label><input id="auSfx" type="range" min="0" max="100" value="60" oninput="AudioSys.setSfx(+this.value)"><b class="auVal" id="auSfxV">60%</b></div>
     <div class="lf-row"><label>静音</label><input id="auMute" type="checkbox" onchange="AudioSys.setMute(this.checked)"></div>
     <div class="login-msg" id="auMsg"></div>
     <div class="login-actions">
@@ -720,9 +720,9 @@ var AudioSys={
     sN.connect(d1);sN.connect(d2);
     this._space=sT;this._spaceN=sN;
   },
-  /* 每次打开游戏都使用默认数值（音乐60/音效50/未静音），不保留上次调整 */
+  /* 每次打开游戏都使用默认数值（音乐50/音效60/未静音），不保留上次调整 */
   load:function(){
-    this.st={music:0.6,sfx:0.5,mute:false};
+    this.st={music:0.5,sfx:0.6,mute:false};
     try{localStorage.removeItem('tzy_audio');}catch(e){}
     var mu=el('auMusic'),sx=el('auSfx'),mt=el('auMute');
     if(mu)mu.value=Math.round(this.st.music*100);
@@ -951,7 +951,7 @@ var AudioSys={
     if(this._fade<1)this._fade=Math.min(1,this._fade+0.25);
     while(this._nextT<look){
       var ch=sc.chords[Math.floor(this._nextT/barDur)%sc.chords.length];
-      var v=sc.vol*this.st.music*this._fade;
+      var v=sc.vol*this.st.music*this._fade*1.5;
       for(var j=0;j<ch.length;j++)T(ch[j],barDur*1.2,sc.wave,v/ch.length,this._nextT,(j-1)*0.03);
       if(hpLv>=1)T(ch[0]/2,barDur*1.1,'sine',v*0.5,this._nextT);
       if(hpLv>=2&&Math.floor(this._nextT/barDur)%2===0){T(62,0.12,'sine',v*0.4,this._nextT);T(57,0.12,'sine',v*0.28,this._nextT+0.16);}
