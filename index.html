@@ -887,7 +887,7 @@ var AudioSys={
   /* 音效库（全部实时合成） */
   sfx:function(n){
     if(!this.ctx||this.st.mute||this.st.sfx<=0)return;
-    var v=this.st.sfx*0.72,now=this.ctx.currentTime,T=this.tone.bind(this),N=this.noise.bind(this);
+    var v=this.st.sfx*0.58,now=this.ctx.currentTime,T=this.tone.bind(this),N=this.noise.bind(this);
     /* 随机变体：±4% 频率/时长抖动，避免重复播放的听感疲劳 */
     var J=function(x){return x*(0.96+Math.random()*0.08);};
     switch(n){
@@ -951,7 +951,7 @@ var AudioSys={
     if(this._fade<1)this._fade=Math.min(1,this._fade+0.25);
     while(this._nextT<look){
       var ch=sc.chords[Math.floor(this._nextT/barDur)%sc.chords.length];
-      var v=sc.vol*this.st.music*this._fade*1.5;
+      var v=sc.vol*this.st.music*this._fade*1.75;
       for(var j=0;j<ch.length;j++)T(ch[j],barDur*1.2,sc.wave,v/ch.length,this._nextT,(j-1)*0.03);
       if(hpLv>=1)T(ch[0]/2,barDur*1.1,'sine',v*0.5,this._nextT);
       if(hpLv>=2&&Math.floor(this._nextT/barDur)%2===0){T(62,0.12,'sine',v*0.4,this._nextT);T(57,0.12,'sine',v*0.28,this._nextT+0.16);}
