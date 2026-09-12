@@ -1103,13 +1103,14 @@ function handleSpeech(v){
 
 /* ===================== 考官答题 ===================== */
 function openExam(examiner,questions,onEnd){
-  S.exam={examiner:examiner,qIdx:0,questions:questions,onEnd:onEnd};
+  S.exam={examiner:examiner,qIdx:0,questions:questions,onEnd:onEnd,busy:0};
   AudioSys.sfx('exam');
   AudioSys.musicUpdate();
   talk(examiner,'你只觉一颗心在胸腔里擂鼓。他缓缓开口——');
   askQ();
 }
 function askQ(){var e=S.exam;if(!e)return;
+  e.busy=0;
   if(e.qIdx>=e.questions.length){finishExam();return;}
   var q=e.questions[e.qIdx];
   brk();if(q.nar)nar(q.nar);talk(e.examiner,q.q);sys('【'+q.prompt+'】');
@@ -1122,7 +1123,7 @@ function askQ(){var e=S.exam;if(!e)return;
 }
 function finishExam(){var e=S.exam;S.exam=null;clearBtn();ok('—— 试炼告一段落 ——');if(e.onEnd)e.onEnd();}
 function answerExam(v){
-  var e=S.exam;if(!e)return;var q=e.questions[e.qIdx];
+  var e=S.exam;if(!e||e.busy)return;e.busy=1;var q=e.questions[e.qIdx];
   // 言语挑衅考官 → 即死
   if(/操|妈的|混账|废物|垃圾|去死|闭嘴|废话|愚蠢|白痴|放屁|滚蛋|你算|干你|日你|欠揍|打我|挑衅/.test(v)){
     danger(e.examiner+' 眸中杀意一凝：“出言无状者，不配入局。”');
@@ -1146,6 +1147,7 @@ function answerExam(v){
 }
 function echoSolve(q){
   if(!S.echo)return;
+  var e=S.exam;if(!e||e.busy)return;e.busy=1;
   if(S.sp<S.echo.cost){danger('精神不足，回响黯淡，无法施放。');setTimeout(function(){if(!S.end&&S.exam)askQ();},500);return;}
   hurtSp(S.echo.cost);q.eSolved=1;
   var noFade=(S.echo.name==='【生生不息】'||S.echo.name==='【强运】'||S.echo.name==='【灵嗅】');
