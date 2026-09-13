@@ -1273,13 +1273,14 @@ function renderPanels(){
   el('panelInv').innerHTML=(S.items.length?S.items.map(function(i){return '<div class="item-card"><div class="iname">'+i.name+'</div><div class="idesc">'+(i.desc||'')+'</div></div>';}).join(''):'<div style="color:#555">（空）</div>')+'<h4>道点</h4><div class="item-card"><div class="iname" style="color:#ffd76b">'+S.dao+'</div><div class="idesc">天地道果，可推动命运。</div></div>';
   el('panelClue').innerHTML=S.clues.length?S.clues.map(function(c){return '<div class="clue-card '+(c.lk?'risk':'')+'"><b>'+c.name+'</b>'+(c.lk?'（锁定）':'')+'<br><span style="color:#8a8a80">'+c.desc+'</span></div>';}).join(''):'<div style="color:#555">尚未发现线索</div>';
   var t=S.tai;
-  el('panelTem').innerHTML='<h4>乔家劲 · 生死之交</h4><div class="item-card"><div class="iname">'+(t.alive?'生命 '+Math.max(0,t.hp|0)+' · 精神 '+Math.max(0,t.sp|0)+' · 羁绊 <span class="tai">'+t.bond+'</span>':'——已阵亡——')+'</div><div class="idesc">'+(t.echo?'回响已醒':'回响未醒')+'。危急可呼叫协助，羁绊越高越愿赴死；轮回后记忆清零。'+(t.alive&&t.bond>=40&&!t.injured&&!t.guardUsed?'<br>他将为你挡下致命一击（每轮回一次）。':'')+'</div></div>';}
+  el('panelTem').innerHTML='<h4>乔家劲 · 生死之交</h4><div class="item-card"><div class="iname">'+(t.alive?'生命 '+Math.max(0,t.hp|0)+' · 精神 '+Math.max(0,t.sp|0)+' · 羁绊 <span class="tai">'+t.bond+'</span>':'——已阵亡——')+'</div><div class="idesc">'+(t.echo?'回响已醒 · 破万法':'回响未醒')+'。危急可呼叫协助，羁绊越高越愿赴死；轮回后记忆清零。'+(t.alive&&t.bond>=40&&!t.injured&&!t.guardUsed?'<br>他将为你挡下致命一击（每轮回一次）。':'')+(t.alive&&t.echo?'<br>破万法：对局中可一拳破题并清空考官怒意（每场一次，耗 10 精神）。':'')+'</div></div>';}
 setInterval(function(){if(el('app').style.display!=='none')renderPanels();},500);
 
 /* ---------- 自由输入 ---------- */
 function handleSpeech(v){
   if(S.exam){answerExam(v);return;}
   var low=v;
+  if(/阿彪/.test(low)&&S.tai.alive&&S.f_taiL2){talk('乔家劲',S.f_taiL2==='truth'?'……阿彪那蠢货，总算能歇了。老子的拳往后替他那份一起打。':'……别提了。这笔账，老子到死都揣着。');return;}
   if(/乔家劲|家劲|叫叫/.test(low)&&S.tai.alive){talk('乔家劲','干啥子？你放心，有我乔家劲在，谁也动不了你。');return;}
   if(/怎么|出路|离开|回家|逃/.test(low)){nar('你环顾惨白的空间，只有一扇又一扇的门，和门后寂静的等待。');return;}
   if(/考官|你是谁|为什么|这是哪/.test(low)){nar('无人应答。只有那机械般的铃声，滴滴答答地响。');return;}
@@ -1344,6 +1345,7 @@ function askQ(){var e=S.exam;if(!e)return;
     if(!o.echo||S.echo)pushBtn({label:'▸ '+o.label,fn:function(){answerExam(o.answer);},echo:!!o.echo});
   });
   if(S.echo&&!q.eSolved){pushBtn({label:'◈ 施放 '+S.echo.name+' 窥破考题',echo:true,fn:function(){echoSolve(q);}});}
+  if(S.tai.alive&&S.tai.echo&&!e.taiPow){pushBtn({label:'◈ 乔家劲 · 破万法（一拳破题 · 净怒意）',echo:true,fn:taiPowan});}
 }
 function finishExam(){var e=S.exam;S.exam=null;renderAnger(null);clearBtn();ok('—— 试炼告一段落 ——');if(e.onEnd)e.onEnd();}
 function answerExam(v){
@@ -1715,6 +1717,7 @@ function chapter3(){
   if(!S.f_tianbing){pushBtn({label:'广场上万人列阵，齐齐望向那座悬空的天秤',fn:tianbing});}
   if(!S.f_taoyuan){pushBtn({label:'废楼深处，隐约露出一座更旧之城的轮廓',fn:taoyuan});}
   if(!S.f_qiao){pushBtn({label:'深夜，乔家劲独自坐在走廊尽头擦着拳头',fn:qiaoBack});}
+  if(S.tai.alive&&S.flags.taiE5&&S.f_qiao&&S.tai.bond>=45&&!S.f_taiL2){pushBtn({label:'乔家劲攥着半块铜牌，指节捏得发白',fn:qiaoLine1});}
   if(!S.f_zhengying){pushBtn({label:'一个少年猛地凑近你，抽了抽鼻子：「你身上……有回响的气味」',fn:zhengYing});}
   if(!S.f_zhangshan){pushBtn({label:'走廊尽头，一个魁梧身影正把坍塌的顶梁扛在肩上',fn:zhangShan});}
   if(!S.f_yunyao){pushBtn({label:'坠落的碎石堪堪擦过你——一只修长的手把你拽开',fn:yunYao});}
@@ -2104,6 +2107,88 @@ function qiaoBack(){S.f_qiao=1;
     S.tai.bond+=10;S.dao+=10;tick();
     pushBtn({label:'各自归房',fn:function(){nar('这一夜的铃声，听着都比往日轻些。');chapter3();}});
   }});
+}
+/* ========== 羁绊第二期 · 独立线「故义 · 半块义牌」 ========== */
+/* L1：旧影（纯展示，不置 flag——「先忍下」后入口仍在） */
+function qiaoLine1(){
+  clearBtn();
+  nar('郑英雄抽了抽鼻子，把你们引到走廊深处。一个新押到的「考官执刀人」正被黑影拖着经过——那人胸前，赫然挂着半块铜牌。');
+  nar('乔家劲浑身一震，攥住了你的手腕。');
+  talk('乔家劲','……是阿彪。我跟他从小一块长大，后来一块在香港做打手。当年我们各执半块义牌，合在一处，是一个「义」字。');
+  talk('乔家劲','就是他。为了那桩狗屁「大局」，把我卖给考官的人——我进这鬼地方，拜他所赐。');
+  nar('他盯着那道黑影，声音压得像砂纸磨铁：「他既然也在这儿……这笔账，该清了。」');
+  pushBtn({label:'「走，我陪你去旧考场会会他」',fn:qiaoLine2});
+  pushBtn({label:'「先忍下。他如今是考官的人，贸然动手太险」',fn:function(){
+    talk('乔家劲','……你说得对。老子等了这么多年，不差这一时。');
+    nar('他把半块铜牌重新揣回怀里。你知道，这事还没完。');
+    chapter3();
+  }});
+}
+/* L2：对刀（此处置 f_taiL1，分支点） */
+function qiaoLine2(){
+  S.f_taiL1=1;clearBtn();
+  big('故 义 · 旧 考 场');
+  nar('旧考场的门被乔家劲一脚踹开。黑影里，执刀人缓缓抬头——半张脸是阿彪，半张脸覆着考官的白影。他眼里没有认出任何人的光。');
+  echoX('考官之影借阿彪的喉咙发声：「又一名困者，自行入局。好。」');
+  talk('乔家劲','阿彪！看着我！当年那笔账，你今天得给老子一个说法！');
+  nar('执刀人手中的白刃亮起。千钧一发——');
+  pushBtn({label:'抢身挡在乔家劲拳前：「先问清楚！他胸前的铜牌是什么意思！」',fn:qiaoLineTruth});
+  pushBtn({label:'与乔家劲并肩，一拳砸向那道白影',fn:qiaoLineVengeance});
+}
+/* L3a：真相 · 放下（破万法完全觉醒） */
+function qiaoLineTruth(){
+  S.f_taiL2='truth';clearBtn();
+  nar('你死死按住乔家劲的拳头，冲执刀人吼出那句：「阿彪！这铜牌——你拿它做了什么！」');
+  nar('白刃在离你咽喉三寸处停住。执刀人脸上的白影剧烈起伏，像有什么东西从深处顶了上来。');
+  talk('阿彪','……家劲？');
+  nar('只清醒这一息。他攥着胸前半块铜牌，声音断断续续：');
+  talk('阿彪','当年……考官索名抵命，账簿上写的是你的名字。我买通了执笔的……把你那页，换成我的。');
+  talk('阿彪','他们以为卖你的是我。可我不换，进这鬼地方的……就是你。我撑了好几轮，就等……等你恨着我，好好活下去……');
+  danger('他脸上的白影重新压下，只来得及把那半块铜牌塞进乔家劲手里。');
+  pushBtn({label:'「替他合上铜牌——告诉他，你早就不恨了」',fn:function(){
+    clearBtn();
+    nar('两半铜牌在掌心一合，正好是一个「义」字。');
+    talk('乔家劲','……蠢货。天底下最大的蠢货。');
+    nar('他红着眼，把合好的义牌按在阿彪胸口。白影寸寸褪去，阿彪笑了一下，像多年前那个和他并肩踢翻赌台的兄弟。');
+    talk('阿彪','家劲，别再只替别人扛了……也有人，想替你扛。');
+    nar('执刀人散作光点。旧考场的门，自己开了。');
+    AudioSys.sfx('clue');AudioSys.tempScene('clue',6500);
+    S.tai.echo=1;S.tai.bond+=15;S.dao+=20;tick();
+    addC('故义 · 半块义牌','阿彪当年买通执笔人，把乔家劲的名字从考官账簿上换成自己的——「卖」是局，替死才是真。两半义牌合一，乔家劲的回响「破万法」自此真正觉醒。',true,1);
+    addI('阿彪的半块义牌','两半合一的「义」字铜牌。它提醒你：有些人扛下的东西，从不让你看见。');
+    ok('乔家劲的回响完全觉醒——破万法！羁绊 +15，道点 +20。');
+    echoX('乔家劲闭上眼，周身气势骤变：从这一刻起，他的拳不只能打散回响——连考官的「意」，也一拳打散。');
+    pushBtn({label:'并肩走出旧考场',fn:function(){nar('一路无话。快到走廊尽头时，他闷闷地说了句：「齐夏，谢谢。要不是你拦那一拳，老子这辈子都还不清他。」');chapter3();}});
+  }});
+}
+/* L3b：复仇（得财与线索，无觉醒） */
+function qiaoLineVengeance(){
+  S.f_taiL2='vengeance';clearBtn();
+  nar('你们一先一后两拳，齐齐砸进白影。执刀人连退七步，后背撞碎了考场的白墙。');
+  danger('白影崩裂的刹那，他脸上覆着的东西褪了一瞬——他低头看着胸前的铜牌，嘴唇动了动。');
+  talk('阿彪','家劲……走……');
+  nar('人没了。两半铜牌躺在地上，他那一半，被他自己攥得死紧。');
+  nar('乔家劲捡起铜牌，在原地站了很久很久。');
+  talk('乔家劲','……报了。仇报了。怎么他妈的，一点都不痛快。');
+  AudioSys.sfx('bad');
+  S.tai.bond+=5;S.dao+=30;tick();
+  addC('故义 · 拳下空余','你与乔家劲当街打碎了沦为执刀人的阿彪。他最后只留下半句「家劲，走」。有些拳头挥出去之后，空的是自己。',true);
+  ok('道点 +30（执刀人散后的遗落）。乔家劲沉默地跟在你身后，再没说一句话。');
+  pushBtn({label:'捡起铜牌，离开旧考场',fn:function(){nar('走廊的铃声滴滴答答。乔家劲把两半铜牌用布条缠了，系在腕上——像一道新的疤。');chapter3();}});
+}
+/* 协作技 · 破万法（对局中：一拳通过当前题并清空考官怒意，每场一次，耗 10 精神） */
+function taiPowan(){
+  var e=S.exam;if(!e||e.busy||e.taiPow)return;
+  if(S.sp<10){danger('精神不足，难以与乔家劲合拳。');return;}
+  e.busy=1;e.taiPow=1;
+  hurtSp(10);
+  var q=e.questions[e.qIdx];
+  AudioSys.sfx('ok');
+  echoX('乔家劲一步抢出，缠满旧布条的拳头直奔考官话音——破万法！');
+  ghost('「管你什么仙法考题，老子一拳打散！」考官的怒意与这一问，同时碎了。');
+  e.anger=0;renderAnger(e);
+  if(q){q.eSolved=1;if(q.good)q.good();}
+  e.qIdx++;askQ();
 }
 /* 支线：灵嗅 · 郑英雄（依据原著：郑英雄回响「灵嗅」，依靠内心求解的执念触发，能通过气味分辨他人的回响、危险气息与空间隐藏线索——终焉之地最好的「鼻子」） */
 function zhengYing(){S.f_zhengying=1;
