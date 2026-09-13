@@ -196,11 +196,7 @@ body{background:#050505;color:var(--bone);font-family:"SimSun","STKaiti","KaiTi"
   <div class="login-box">
     <h3>道 · 易 物</h3>
     <div class="login-msg" id="daoMsg"></div>
-    <div class="dao-row">
-      <button class="menu-btn" onclick="Game.daoBuy('hint')">以道问路 · 20 道点<br><span style="font-size:12px;color:#8a82a8">一缕微光，指引前路</span></button>
-      <button class="menu-btn" onclick="Game.daoBuy('bet')">以道赌局 · 10 道点<br><span style="font-size:12px;color:#8a82a8">骰子定气运：偶数翻倍，奇数落空</span></button>
-      <button class="menu-btn" onclick="Game.daoBuy('heal')">以道续命 · 15 道点<br><span style="font-size:12px;color:#8a82a8">道果暖流，回复 25 血量</span></button>
-    </div>
+    <div class="dao-row" id="daoBtns"></div>
     <div class="login-actions">
       <button class="menu-btn" onclick="Game.daoClose()">收 起</button>
     </div>
@@ -1227,27 +1223,70 @@ var Game={
     el('loreBody').innerHTML=(i===10&&window.ENDINGS)?renderEndings():LOREBODY[i];
   },
   rest:function(){if(S.end)return;ok('你靠墙闭目，精神略复。');S.sp=Math.min(80,S.sp+3);tick();},
-  daoOpen:function(){if(S.end){danger('轮回已尽，无可易物。');return;}if(S.exam){danger('对局之中，考官在侧，不宜分心。');return;}el('daoMsg').innerHTML='当前道点：<b style="color:#ffd76b">'+S.dao+'</b>';el('daoSet').classList.add('show');},
+  daoOpen:function(){if(S.end){danger('轮回已尽，无可易物。');return;}if(S.exam){danger('对局之中，考官在侧，不宜分心。');return;}Game.renderDaoMenu();el('daoSet').classList.add('show');},
+  renderDaoMenu:function(){
+    var hintUsed=S.f_daoHint||0,hintPrice=DAO_HINT_PRICE[Math.min(hintUsed,4)],hintDone=hintUsed>=DAO_HINTS.length;
+    function btn(key,title,sub,dis){return '<button class="menu-btn"'+(dis?' disabled style="opacity:.45;cursor:not-allowed"':' onclick="Game.daoBuy(\''+key+'\')"')+'>'+title+'<br><span style="font-size:12px;color:#8a82a8">'+sub+'</span></button>';}
+    var h='';
+    h+=btn('hint',hintDone?'以道问路 · 微光已尽':'以道问路 · '+hintPrice+' 道点',hintDone?'五缕微光皆已入心':('暗线指引 · 已问 '+hintUsed+'/5（逐次涨价）'),hintDone);
+    h+=btn('bet',S.f_betDay?'以道赌局 · 今日已掷':'以道赌局 · 10 道点',S.f_betDay?'明日请早':'偶数 +20，奇数落空 · 每日一次',S.f_betDay);
+    h+=btn('heal',S.f_healDay?'以道续命 · 今日已续':'以道续命 · 25 道点',S.f_healDay?'明日请早':'回复 25 血量 · 每日一次',S.f_healDay);
+    h+=btn('reforge','道果锻回响 · 50 道点',S.echo?('洗炼当前回响（现：'+S.echo.name+'）'):'尚无回响，不可锻',!S.echo);
+    el('daoBtns').innerHTML=h;
+    el('daoMsg').innerHTML='当前道点：<b style="color:#ffd76b">'+S.dao+'</b>';
+  },
   daoClose:function(){el('daoSet').classList.remove('show');},
   daoBuy:function(k){
     if(S.end||S.exam){Game.daoClose();return;}
     if(k==='hint'){
-      if(S.dao<20){el('daoMsg').innerHTML='道点不足（需 20）。道果微光黯淡。';return;}
-      S.dao-=20;tick();ok('道点 -20（以道问路）');AudioSys.sfx('dao');
-      var used=S.f_daoHint||0;var h=DAO_HINTS[used%DAO_HINTS.length];S.f_daoHint=used+1;
+      var used=S.f_daoHint||0;
+      if(used>=DAO_HINTS.length){el('daoMsg').innerHTML='五缕微光皆已入心，无可再问。';return;}
+      var price=DAO_HINT_PRICE[used];
+      if(S.dao<price){el('daoMsg').innerHTML='道点不足（需 '+price+'）。道果微光黯淡。';return;}
+      S.dao-=price;tick();ok('道点 -'+price+'（以道问路）');AudioSys.sfx('dao');
+      var h=DAO_HINTS[used];S.f_daoHint=used+1;
       ok('（道果化作一缕微光，落入你眉心。）');nar(h);
+      Game.renderDaoMenu();
     }else if(k==='bet'){
+      if(S.f_betDay){el('daoMsg').innerHTML='今日气运已尽，明日再来。';return;}
       if(S.dao<10){el('daoMsg').innerHTML='道点不足（需 10）。道果微光黯淡。';return;}
-      S.dao-=10;tick();ok('道点 -10（以道赌局）');AudioSys.sfx('dice');
+      S.dao-=10;S.f_betDay=1;tick();ok('道点 -10（以道赌局）');AudioSys.sfx('dice');
       var r=rand(1,6);sys('骰子格落格落……朝上的点数是【 '+r+' 】');
       if(r%2===0){S.dao+=20;tick();ok('双数面朝上。气运临身，道点 +20。');}
       else{danger('单数面朝上。道果落空——愿赌服输。');}
+      Game.renderDaoMenu();
     }else if(k==='heal'){
-      if(S.dao<15){el('daoMsg').innerHTML='道点不足（需 15）。道果微光黯淡。';return;}
-      S.dao-=15;tick();ok('道点 -15（以道续命）');AudioSys.sfx('dao');
+      if(S.f_healDay){el('daoMsg').innerHTML='今日已借过命，明日再来。';return;}
+      if(S.hp>=80){el('daoMsg').innerHTML='气血已满，无需续命。';return;}
+      if(S.dao<25){el('daoMsg').innerHTML='道点不足（需 25）。道果微光黯淡。';return;}
+      S.dao-=25;S.f_healDay=1;tick();ok('道点 -25（以道续命）');AudioSys.sfx('dao');
       var g=Math.min(80,S.hp+25)-S.hp;S.hp+=g;tick();ok('道果化作暖流灌入四肢百骸。血量 +'+g+'。');
+      Game.renderDaoMenu();
+    }else if(k==='reforge'){
+      if(!S.echo)return;
+      if(S.dao<50){el('daoMsg').innerHTML='道点不足（需 50）。锻炉之火黯淡。';return;}
+      var hh='';
+      Object.keys(REFORGE_ECHOES).forEach(function(id){
+        var E=REFORGE_ECHOES[id];if(S.echo&&E.name===S.echo.name)return;
+        hh+='<button class="menu-btn" onclick="Game.daoPickEcho(\''+id+'\')">'+E.name+' · 50 道点<br><span style="font-size:12px;color:#8a82a8">'+E.sub+'（施放耗精神 '+E.cost+'）</span></button>';
+      });
+      hh+='<button class="menu-btn" onclick="Game.renderDaoMenu()">暂 不 锻 了</button>';
+      el('daoBtns').innerHTML=hh;
+      el('daoMsg').innerHTML='当前道点：<b style="color:#ffd76b">'+S.dao+'</b> · 选择锻成之回响（选定方扣点）';
     }
-    el('daoMsg').innerHTML='当前道点：<b style="color:#ffd76b">'+S.dao+'</b>';
+  },
+  daoPickEcho:function(id){
+    if(S.end||S.exam||!S.echo)return;
+    var E=REFORGE_ECHOES[id];if(!E)return;
+    if(E.name===S.echo.name)return;
+    if(S.dao<50){el('daoMsg').innerHTML='道点不足（需 50）。锻炉之火黯淡。';return;}
+    S.dao-=50;tick();var old=S.echo.name;
+    S.echo={name:E.name,cost:E.cost};S.echoLv=1;
+    if(id==='dx'&&!S.f_dongxi_revealed){S.f_dongxi_revealed=1;addC('局后推演·洞悉','洞悉在每一局后，替你多摊开一道暗线。',true);}
+    AudioSys.sfx('echoUp');
+    ok('道点 -50（道果锻回响）');
+    echoX('锻炉中火光一卷，回响重塑：'+old+' → '+E.name+'。');
+    Game.renderDaoMenu();
   },
   speak:function(){if(S.end)return;var v=el('freeInput').value.replace(/^\s+|\s+$/g,'');if(!v)return;el('freeInput').value='';me(v);handleSpeech(v);},
   rush:function(){rushSeq();}
@@ -1261,6 +1300,16 @@ var DAO_HINTS=[
   '强运之人，所求不得、所惧不至——答案常在你最怕推开的那扇门后。',
   '十日为限。最后一日三名考官并立，别信考官，信你自己的名字。'
 ];
+var DAO_HINT_PRICE=[10,20,30,40,50];
+/* 道果锻炉：可洗炼的六种炼化回响（cost 与 echoSolve 特判分支一一对应，勿擅增） */
+var REFORGE_ECHOES={
+  'wang':{name:'【往】',cost:26,sub:'循着回响逆流窥破，均衡之选'},
+  'ssbx':{name:'【生生不息】',cost:40,sub:'以信念为火，一线不稳亦永不熄灭'},
+  'qy':{name:'【强运】',cost:22,sub:'窥破率最高，运至时可闪避致命判词'},
+  'tn':{name:'【探囊】',cost:34,sub:'窥破之时，自虚空额外捞得一物'},
+  'lx':{name:'【灵嗅】',cost:14,sub:'耗费最微，失败亦不易熄灭'},
+  'dx':{name:'【洞悉】',cost:42,sub:'每局之后，多摊开一道暗线'}
+};
 
 /* ---------- 渲染 ---------- */
 function showUI(){tick();renderQB();Game.refreshSaves();}
@@ -1513,7 +1562,7 @@ function diceGamble(){S.f_dice=1;
 function sl1(){brk();nar('你闭上眼。门外的铃声滴滴答答，一夜过尽。');advanceDay();}
 
 /* ---------- 推进 ---------- */
-function advanceDay(){S.day++;tick();if(S.day>10){sys('（第十日已尽。）');finalDay();return;}dayIntro();}
+function advanceDay(){S.day++;S.f_healDay=0;S.f_betDay=0;tick();if(S.day>10){sys('（第十日已尽。）');finalDay();return;}dayIntro();}
 function dayIntro(menuOnly){
   if(!menuOnly){
     big('—— 第 '+S.day+' 日 ——');
