@@ -100,6 +100,11 @@ body{background:#050505;color:var(--bone);font-family:"SimSun","STKaiti","KaiTi"
 #audioSet .lf-row input[type=range]{flex:1;accent-color:var(--blood);}
 #audioSet .lf-row .auVal{width:46px;flex:none;text-align:right;font-size:13px;color:#b8b2d9;letter-spacing:1px;}
 #audioSet .lf-row input[type=checkbox]{flex:0;width:auto;transform:scale(1.4);accent-color:var(--blood);}
+#daoSet{position:fixed;inset:0;z-index:64;background:rgba(3,3,3,.94);display:none;align-items:center;justify-content:center;padding:20px;}
+#daoSet.show{display:flex;}
+#daoSet .login-box{width:min(440px,96vw);}
+.dao-row{display:flex;flex-direction:column;gap:10px;margin-top:2px;}
+.dao-row .menu-btn{width:100%;white-space:normal;line-height:1.9;text-align:center;font-size:14px;letter-spacing:3px;}
 .hint{color:#555;font-size:12px;letter-spacing:2px;max-width:620px;text-align:center;line-height:2;}
 #lore{position:fixed;inset:0;z-index:60;background:rgba(3,3,3,.92);display:none;align-items:center;justify-content:center;padding:20px;}
 #lore.show{display:flex;}
@@ -187,6 +192,22 @@ body{background:#050505;color:var(--bone);font-family:"SimSun","STKaiti","KaiTi"
   </div>
 </div>
 
+<div id="daoSet" onclick="if(event.target===this)Game.daoClose()">
+  <div class="login-box">
+    <h3>道 · 易 物</h3>
+    <div class="login-msg" id="daoMsg"></div>
+    <div class="dao-row">
+      <button class="menu-btn" onclick="Game.daoBuy('hint')">以道问路 · 20 道点<br><span style="font-size:12px;color:#8a82a8">一缕微光，指引前路</span></button>
+      <button class="menu-btn" onclick="Game.daoBuy('bet')">以道赌局 · 10 道点<br><span style="font-size:12px;color:#8a82a8">骰子定气运：偶数翻倍，奇数落空</span></button>
+      <button class="menu-btn" onclick="Game.daoBuy('heal')">以道续命 · 15 道点<br><span style="font-size:12px;color:#8a82a8">道果暖流，回复 25 血量</span></button>
+    </div>
+    <div class="login-actions">
+      <button class="menu-btn" onclick="Game.daoClose()">收 起</button>
+    </div>
+    <div class="login-foot">道果乃天地造化，非战时可易。对局之中，考官在侧，不宜分心。</div>
+  </div>
+</div>
+
 <div id="handbook">
   <div class="lore-box">
     <div class="lore-head"><span>终 焉 手 札 · 轮 回 记 录</span><button class="btn-mini" onclick="Game.hbClose()">收 起</button></div>
@@ -205,6 +226,7 @@ body{background:#050505;color:var(--bone);font-family:"SimSun","STKaiti","KaiTi"
     <span id="echoChip"></span>
     <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;">
       <button class="btn-mini" onclick="Game.pact()">召·乔家劲</button>
+      <button class="btn-mini" onclick="Game.daoOpen()">道·易物</button>
       <button class="btn-mini" onclick="Game.rest()">休整</button>
       <button class="btn-mini" onclick="Game.doSave()">存档</button>
       <button class="btn-mini" onclick="Game.lore()">卷宗</button>
@@ -248,7 +270,7 @@ var $log=function(){return el('log');};
 /* ---------- 状态 ---------- */
 var S;
 function baseState(){return{day:1,cycle:1,hp:80,sp:80,dao:10,daoGain:0,clueGain:0,echo:null,echoLv:0,
-  items:[],clues:[],flags:{},deathCount:0,tai:{alive:true,hp:100,sp:100,bond:5,echo:false},exam:null,end:0};}
+  items:[],clues:[],flags:{},deathCount:0,tai:{alive:true,hp:100,sp:100,bond:5,echo:false,guardUsed:0},exam:null,end:0};}
 S=baseState();
 
 /* ---------- 按钮 ---------- */
@@ -286,9 +308,20 @@ function brk(){out({t:'center',x:'—— ✦ ——'});}
 function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 function hasI(n){return S.items.some(function(i){return i.name===n;});}
 function addI(n,d){if(!hasI(n))S.items.push({name:n,desc:d||''});tick();}
-function addC(n,d,lk){if(!S.clues.some(function(c){return c.name===n;})){S.clues.push({name:n,desc:d,lk:!!lk});S.clueGain=(S.clueGain||0)+1;AudioSys.sfx('clue');AudioSys.tempScene('clue',6500);}tick();}
+function addC(n,d,lk){if(!S.clues.some(function(c){return c.name===n;})){S.clues.push({name:n,desc:d,lk:!!lk});S.clueGain=(S.clueGain||0)+1;if(Stats){Stats.bump('clues');}AudioSys.sfx('clue');AudioSys.tempScene('clue',6500);}tick();}
 function addDao(n){S.dao+=n;S.daoGain=(S.daoGain||0)+n;ok('道点 +'+n);AudioSys.sfx('dao');tick();}
-function hurt(n,r){S.hp-=n;if(r)danger(r);if(S.hp<=0){S.hp=0;tick();danger('鲜血翻涌，视线尽黑……');death(r);}else{AudioSys.sfx('hurt');tick();}}
+function hurt(n,r){S.hp-=n;if(r)danger(r);if(S.hp<=0){S.hp=0;tick();danger('鲜血翻涌，视线尽黑……');
+  if(S.tai.alive&&S.tai.bond>=40&&!S.tai.injured&&!S.tai.guardUsed){
+    S.tai.guardUsed=1;S.hp=1;tick();
+    AudioSys.sfx('good');
+    ghost('一道壮硕的身影抢步挡在你身前——乔家劲！');
+    talk('乔家劲','早就说过了——先倒下的那个，得是老子！');
+    S.tai.hp=Math.max(0,S.tai.hp-Math.ceil(n*0.6));tick();
+    if(S.tai.hp<=0){S.tai.alive=false;tick();ghost('乔家劲替你吃下这一击，轰然倒地……你保住了一命。');}
+    else{S.tai.bond-=10;tick();ok('他替你挡下致命一击（本轮回仅此一次），羁绊 -10。');}
+    return;
+  }
+  death(r);}else{AudioSys.sfx('hurt');tick();}}
 function hurtSp(n){S.sp-=n;if(S.sp<=0){S.sp=0;sys('精神枯竭，你眼前一黑……');if(S.echo){danger(S.echo.name+'辉光熄灭——回响失效！');S.echo=null;}}tick();}
 function stopIn(){el('left').style.pointerEvents='none';}
 function allowIn(){el('left').style.pointerEvents='';}
@@ -697,50 +730,77 @@ function savKey(id){return userPrefix()+id;}
 var DEATH_INFO=null;
 var Stats={
   KEY:function(){return 'tzy_stats_'+(User.current()||'guest');},
-  get:function(){try{return Object.assign({rounds:0,days:0,good:0,bad:0,exams:0,clues:0,endings:[],deathProvoke:0,deathExam:0},JSON.parse(localStorage.getItem(Stats.KEY()))||{});}catch(e){return{rounds:0,days:0,good:0,bad:0,exams:0,clues:0,endings:[],deathProvoke:0,deathExam:0};}},
+  get:function(){try{return Object.assign({rounds:0,days:0,good:0,bad:0,exams:0,clues:0,endings:[],deathProvoke:0,deathExam:0,achieved:[]},JSON.parse(localStorage.getItem(Stats.KEY()))||{});}catch(e){return{rounds:0,days:0,good:0,bad:0,exams:0,clues:0,endings:[],deathProvoke:0,deathExam:0,achieved:[]};}},
   save:function(s){try{localStorage.setItem(Stats.KEY(),JSON.stringify(s));}catch(e){}},
-  bump:function(k,n){var s=Stats.get();s[k]=(s[k]||0)+(n||1);Stats.save(s);},
-  ending:function(name){if(!name)return false;var s=Stats.get();if(s.endings.indexOf(name)<0){s.endings.push(name);Stats.save(s);return true;}return false;}
+  bump:function(k,n){var s=Stats.get();s[k]=(s[k]||0)+(n||1);checkAchievements();Stats.save(s);},
+  ending:function(name){if(!name)return false;var s=Stats.get();if(s.endings.indexOf(name)<0){s.endings.push(name);checkAchievements();Stats.save(s);return true;}return false;}
 };
+/* 成就 · 称号（跨轮回收集） */
+var ACHIEVEMENTS=[
+  {id:'a1',name:'初入终焉',desc:'迎来第一次终焉。',check:function(s){return s.rounds>=1;}},
+  {id:'a2',name:'轮回老鬼',desc:'累计轮回 10 次。',check:function(s){return s.rounds>=10;}},
+  {id:'a3',name:'长夜漫行',desc:'累计存活 30 日。',check:function(s){return s.days>=30;}},
+  {id:'a4',name:'初试锋芒',desc:'经历 1 场对局。',check:function(s){return s.exams>=1;}},
+  {id:'a5',name:'身经百战',desc:'经历 50 场对局。',check:function(s){return s.exams>=50;}},
+  {id:'a6',name:'舌灿莲花',desc:'答对 50 题。',check:function(s){return s.good>=50;}},
+  {id:'a7',name:'屡败屡战',desc:'答错 50 题。',check:function(s){return s.bad>=50;}},
+  {id:'a8',name:'暗线猎手',desc:'发现 20 条线索。',check:function(s){return s.clues>=20;}},
+  {id:'a9',name:'故事收集者',desc:'解锁 5 个结局。',check:function(s){return s.endings.length>=5;}},
+  {id:'a10',name:'终焉之主',desc:'解锁全部 19 个结局。',check:function(s){return s.endings.length>=19;}},
+  {id:'a11',name:'以命搏名',desc:'因言语挑衅考官而即死一次。',check:function(s){return s.deathProvoke>=1;}},
+  {id:'a12',name:'考官之敌',desc:'死于考官之罚 5 次。',check:function(s){return s.deathExam>=5;}}
+];
+function checkAchievements(){
+  var s=Stats.get();if(!s.achieved)s.achieved=[];
+  var fresh=[];
+  ACHIEVEMENTS.forEach(function(a){
+    if(s.achieved.indexOf(a.id)<0&&a.check(s)){s.achieved.push(a.id);fresh.push(a);}
+  });
+  if(fresh.length){
+    Stats.save(s);
+    AudioSys.sfx('clue');
+    fresh.forEach(function(a){ok('◆ 成就解锁：'+a.name+' —— '+a.desc);});
+  }
+}
 /* 结局图鉴 · 19 结局数据（id 与解锁名对应；star=0普通 1隐藏 2最高隐藏） */
 var ENDINGS=[
-  {id:'真结局',desc:'以毒攻毒，瓦解「背信」终局，正式脱离轮回。',star:0},
-  {id:'归途秘隐结局',desc:'重读老兵的旧物，窥见终焉之地唯一破例的真相。',star:0},
-  {id:'生生·归途',desc:'以信念自造归途之门——门，可以信则有。',star:0},
-  {id:'破万法 · 一拳破局',desc:'乔家劲「破万法」一拳化解一切，为众生挣一线生机。',star:0},
-  {id:'双生花 · 断弦',desc:'斩断青龙与天龙的双生绑定，天龙的离析再难笼罩众生。',star:0},
-  {id:'怜人终局',desc:'唤回考官的人性，不战而破其局。',star:0},
-  {id:'以名为引 · 各得其所',desc:'送所有困者进入不再有死亡的世界，主角独留终焉孤神。',star:0},
-  {id:'入梦 · 相见',desc:'织出想念之人的门，在记忆构成的现实中相见、相伴、终老。',star:0},
-  {id:'仓颉棋 · 忆归',desc:'地龙落败，笼罩众生的「隔断」消失，记忆随之回归。',star:0},
-  {id:'逆运 · 归途',desc:'押上整副好运，换一条回家的路。',star:0},
-  {id:'推演 · 通幽',desc:'把终焉之地的每一盘局推演到底，「局」的本体也无处可藏。',star:0},
-  {id:'强破终局',desc:'燃尽回响强破考官之门（精神耗尽则会反被考官反制）。',star:0},
-  {id:'舍身结局',desc:'舍去回响，只求保住这份记忆，安然出局。',star:0},
-  {id:'推门者的回旋',desc:'无回响，径直推门，坠入下一轮回的冲刺。',star:0},
-  {id:'羁绊 · 以命开门',desc:'唤乔家劲断后，他为你挡下致命一劫，以命换门。',star:0},
-  {id:'★★ EX · 越界者',desc:'不再破一扇门，而是让考官之名、考官软肋、老兵旧路三者同时交叠，使终焉之地失去「唯一的门」。',star:2},
-  {id:'★ 越过终焉 · 造神',desc:'参透终焉之地造神牢笼的本质，以生生不息掀翻轮回，「各位，极道万岁。」',star:1},
-  {id:'★ 九命 · 替罪',desc:'陈俊南以「替罪」替你留名，用尽第九条命。',star:1},
-  {id:'★ 白羊 · 执棋者归位',desc:'不再破门造门，而是巡游每一处旧局，执起众生本应自己下的棋。',star:1}
+  {id:'真结局',desc:'以毒攻毒，瓦解「背信」终局，正式脱离轮回。',star:0,hint:'需三周目之上，持一道带刺的回响。'},
+  {id:'归途秘隐结局',desc:'重读老兵的旧物，窥见终焉之地唯一破例的真相。',star:0,hint:'与一位老兵的旧物有关——往昔的回响里，藏着破例。'},
+  {id:'生生·归途',desc:'以信念自造归途之门——门，可以信则有。',star:0,hint:'若你相信门可以信则有——一种不息的回响，会替你造路。'},
+  {id:'破万法 · 一拳破局',desc:'乔家劲「破万法」一拳化解一切，为众生挣一线生机。',star:0,hint:'乔家劲那一拳可破万法——助他走到那一步，羁绊不可或缺。'},
+  {id:'双生花 · 断弦',desc:'斩断青龙与天龙的双生绑定，天龙的离析再难笼罩众生。',star:0,hint:'两名考官的纠葛里，藏着断弦之机。'},
+  {id:'怜人终局',desc:'唤回考官的人性，不战而破其局。',star:0,hint:'考官也是人。有人性，便有破局。'},
+  {id:'以名为引 · 各得其所',desc:'送所有困者进入不再有死亡的世界，主角独留终焉孤神。',star:0,hint:'把每个人的名字记到最后一刻，送他们各得其所。'},
+  {id:'入梦 · 相见',desc:'织出想念之人的门，在记忆构成的现实中相见、相伴、终老。',star:0,hint:'以【往】织出想念之人的门——想念，是唯一的钥匙。'},
+  {id:'仓颉棋 · 忆归',desc:'地龙落败，笼罩众生的「隔断」消失，记忆随之回归。',star:0,hint:'一盘落子的棋藏在轮回更深处，需集齐数处旧局的线索。'},
+  {id:'逆运 · 归途',desc:'押上整副好运，换一条回家的路。',star:0,hint:'强运之人，敢押上整副好运。'},
+  {id:'推演 · 通幽',desc:'把终焉之地的每一盘局推演到底，「局」的本体也无处可藏。',star:0,hint:'洞悉一切局之人，终将看穿「局」本身。'},
+  {id:'强破终局',desc:'燃尽回响强破考官之门（精神耗尽则会反被考官反制）。',star:0,hint:'燃尽回响，可强破考官之门——但心神也会一同燃尽。'},
+  {id:'舍身结局',desc:'舍去回响，只求保住这份记忆，安然出局。',star:0,hint:'舍去回响，只求保住记忆。'},
+  {id:'推门者的回旋',desc:'无回响，径直推门，坠入下一轮回的冲刺。',star:0,hint:'没有回响，径直推门。'},
+  {id:'羁绊 · 以命开门',desc:'唤乔家劲断后，他为你挡下致命一劫，以命换门。',star:0,hint:'羁绊之深，可让乔家劲以命为你开门。'},
+  {id:'★★ EX · 越界者',desc:'不再破一扇门，而是让考官之名、考官软肋、老兵旧路三者同时交叠，使终焉之地失去「唯一的门」。',star:2,hint:'非破门，而是让终焉之地失去「唯一的门」——集齐轮回中的暗线。'},
+  {id:'★ 越过终焉 · 造神',desc:'参透终焉之地造神牢笼的本质，以生生不息掀翻轮回，「各位，极道万岁。」',star:1,hint:'参透造神牢笼的本质——生生不息，可掀翻轮回。'},
+  {id:'★ 九命 · 替罪',desc:'陈俊南以「替罪」替你留名，用尽第九条命。',star:1,hint:'陈俊南的第九条命，会替谁留名？'},
+  {id:'★ 白羊 · 执棋者归位',desc:'不再破门造门，而是巡游每一处旧局，执起众生本应自己下的棋。',star:1,hint:'不再破门造门——执起众生自己的棋。'}
 ];
 /* 线索名 → 结局 id 的映射（个别结局线索名与图鉴名不一致） */
 var ENDING_MAP={'考官反制':'强破终局','逆运·归途':'逆运 · 归途','推演·通幽':'推演 · 通幽','羁绊终结局':'羁绊 · 以命开门','EX·越界者':'★★ EX · 越界者','越过终焉 · 造神':'★ 越过终焉 · 造神'};
 function renderEndings(){
   var s=Stats.get(),ids=s.endings;
-  var hb='<div class="lc" style="color:#8a82a8">终焉之地，路不只一条。每一次轮回、每一道取舍，都通向不同的落幕。标 ★ 者为隐藏结局；未解锁者不示条件，留待轮回中自行摸索。<br><b style="color:#ffd76b">已解锁 '+ids.length+' / '+ENDINGS.length+'</b></div>';
+  var hb='<div class="lc" style="color:#8a82a8">终焉之地，路不只一条。每一次轮回、每一道取舍，都通向不同的落幕。标 ★ 者为隐藏结局；未解锁者仅示方向、不示条件，留待轮回中自行摸索。<br><b style="color:#ffd76b">已解锁 '+ids.length+' / '+ENDINGS.length+'</b></div>';
   var normal=ENDINGS.filter(function(e){return !e.star;}),star=ENDINGS.filter(function(e){return e.star;});
   hb+='<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:6px">终局落幕（非隐藏）</h4>';
   normal.forEach(function(e){
     var got=ids.indexOf(e.id)>=0;
     hb+=got?'<div class="lc" style="border-left:3px solid #ffd76b;padding-left:8px"><b>'+e.id+'</b>'+e.desc+'</div>'
-           :'<div class="lc" style="color:#5a5a5a"><b>？？？</b>（尚未解锁）</div>';
+           :'<div class="lc" style="color:#5a5a5a"><b>？？？</b>（尚未解锁）<br><span style="color:#6a6478;font-size:12px">方向：'+e.hint+'</span></div>';
   });
   hb+='<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:14px">★ 隐藏结局</h4>';
   star.forEach(function(e){
     var got=ids.indexOf(e.id)>=0;
     hb+=got?'<div class="lc" style="border-left:3px solid #ffd76b;padding-left:8px"><b>'+e.id+'</b>'+e.desc+'</div>'
-           :'<div class="lc" style="color:#5a5a5a"><b>'+(e.star===2?'★★？':'★？')+'</b>（尚未解锁）</div>';
+           :'<div class="lc" style="color:#5a5a5a"><b>'+(e.star===2?'★★？':'★？')+'</b>（尚未解锁）<br><span style="color:#6a6478;font-size:12px">方向：'+e.hint+'</span></div>';
   });
   return hb;
 }
@@ -1148,11 +1208,18 @@ var Game={
   handbook:function(){var s=Stats.get();
     var dies='<b>挑衅即死</b> '+s.deathProvoke+' 次 · <b>考官之罚</b> '+s.deathExam+' 次';
     var endList=s.endings.length?ENDINGS.map(function(e){return s.endings.indexOf(e.id)>=0?'<div class="clue-card"><b>'+e.id+'</b><br><span style="color:#8a8a80">'+e.desc+'</span></div>':'';}).join(''):'<div style="color:#555">尚未解锁任何结局。终章抉择，皆通往不同落幕。</div>';
+    var ach=s.achieved||[];
+    var achList=ACHIEVEMENTS.map(function(a){
+      var got=ach.indexOf(a.id)>=0;
+      return got?'<div class="lc" style="border-left:3px solid #ffd76b;padding-left:8px;color:#d8d2e8"><b style="color:#ffd76b">◆ '+a.name+'</b>　'+a.desc+'</div>'
+                :'<div class="lc" style="color:#5a5a5a"><b>◇ '+a.name+'</b>　'+a.desc+'</div>';
+    }).join('');
     el('hbBody').innerHTML='<div class="lc" style="border:1px solid #2b2540;border-radius:8px;padding:12px 16px;background:#0d0b16">'+
       '<b style="color:#ffd76b">轮回 '+s.rounds+'</b> 次 · 累计存活 <b style="color:#ffd76b">'+s.days+'</b> 日<br>'+
       '对局 <b>'+s.exams+'</b> 场 · 答对 <b style="color:#7fd08a">'+s.good+'</b> / 答错 <b style="color:#e07a7a">'+s.bad+'</b> · 发现线索 <b>'+s.clues+'</b> 条<br>'+
       '死亡原因：'+dies+'<br>结局已解锁 <b style="color:#ffd76b">'+s.endings.length+'</b> / '+ENDINGS.length+'</div>'+
-      '<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:8px">已解锁结局</h4>'+endList;
+      '<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:8px">已解锁结局</h4>'+endList+
+      '<h4 style="color:#ffd76b;border-bottom:1px solid #241f36;padding-bottom:4px;margin-top:14px">成就 · '+ach.length+' / '+ACHIEVEMENTS.length+'</h4>'+achList;
     el('handbook').classList.add('show');},
   hbClose:function(){el('handbook').classList.remove('show');},
   loreTab:function(i){
@@ -1160,9 +1227,40 @@ var Game={
     el('loreBody').innerHTML=(i===10&&window.ENDINGS)?renderEndings():LOREBODY[i];
   },
   rest:function(){if(S.end)return;ok('你靠墙闭目，精神略复。');S.sp=Math.min(80,S.sp+3);tick();},
+  daoOpen:function(){if(S.end){danger('轮回已尽，无可易物。');return;}if(S.exam){danger('对局之中，考官在侧，不宜分心。');return;}el('daoMsg').innerHTML='当前道点：<b style="color:#ffd76b">'+S.dao+'</b>';el('daoSet').classList.add('show');},
+  daoClose:function(){el('daoSet').classList.remove('show');},
+  daoBuy:function(k){
+    if(S.end||S.exam){Game.daoClose();return;}
+    if(k==='hint'){
+      if(S.dao<20){el('daoMsg').innerHTML='道点不足（需 20）。道果微光黯淡。';return;}
+      S.dao-=20;tick();ok('道点 -20（以道问路）');AudioSys.sfx('dao');
+      var used=S.f_daoHint||0;var h=DAO_HINTS[used%DAO_HINTS.length];S.f_daoHint=used+1;
+      ok('（道果化作一缕微光，落入你眉心。）');nar(h);
+    }else if(k==='bet'){
+      if(S.dao<10){el('daoMsg').innerHTML='道点不足（需 10）。道果微光黯淡。';return;}
+      S.dao-=10;tick();ok('道点 -10（以道赌局）');AudioSys.sfx('dice');
+      var r=rand(1,6);sys('骰子格落格落……朝上的点数是【 '+r+' 】');
+      if(r%2===0){S.dao+=20;tick();ok('双数面朝上。气运临身，道点 +20。');}
+      else{danger('单数面朝上。道果落空——愿赌服输。');}
+    }else if(k==='heal'){
+      if(S.dao<15){el('daoMsg').innerHTML='道点不足（需 15）。道果微光黯淡。';return;}
+      S.dao-=15;tick();ok('道点 -15（以道续命）');AudioSys.sfx('dao');
+      var g=Math.min(80,S.hp+25)-S.hp;S.hp+=g;tick();ok('道果化作暖流灌入四肢百骸。血量 +'+g+'。');
+    }
+    el('daoMsg').innerHTML='当前道点：<b style="color:#ffd76b">'+S.dao+'</b>';
+  },
   speak:function(){if(S.end)return;var v=el('freeInput').value.replace(/^\s+|\s+$/g,'');if(!v)return;el('freeInput').value='';me(v);handleSpeech(v);},
   rush:function(){rushSeq();}
 };
+
+/* ---------- 道 · 易物（消耗渠道，缓解道点溢出） ---------- */
+var DAO_HINTS=[
+  '你仿佛听见铁律的回响：此处最恨谎言——考官们自己，也各藏着一句。',
+  '门后之「你」记得一切。若能寻回那扇错位的门，或可窥见轮回的缝。',
+  '乔家劲说，义字比命值钱。有人愿为你赴死，也有人等你替他说出名字。',
+  '强运之人，所求不得、所惧不至——答案常在你最怕推开的那扇门后。',
+  '十日为限。最后一日三名考官并立，别信考官，信你自己的名字。'
+];
 
 /* ---------- 渲染 ---------- */
 function showUI(){tick();renderQB();Game.refreshSaves();}
@@ -1175,7 +1273,7 @@ function renderPanels(){
   el('panelInv').innerHTML=(S.items.length?S.items.map(function(i){return '<div class="item-card"><div class="iname">'+i.name+'</div><div class="idesc">'+(i.desc||'')+'</div></div>';}).join(''):'<div style="color:#555">（空）</div>')+'<h4>道点</h4><div class="item-card"><div class="iname" style="color:#ffd76b">'+S.dao+'</div><div class="idesc">天地道果，可推动命运。</div></div>';
   el('panelClue').innerHTML=S.clues.length?S.clues.map(function(c){return '<div class="clue-card '+(c.lk?'risk':'')+'"><b>'+c.name+'</b>'+(c.lk?'（锁定）':'')+'<br><span style="color:#8a8a80">'+c.desc+'</span></div>';}).join(''):'<div style="color:#555">尚未发现线索</div>';
   var t=S.tai;
-  el('panelTem').innerHTML='<h4>乔家劲 · 生死之交</h4><div class="item-card"><div class="iname">'+(t.alive?'生命 '+Math.max(0,t.hp|0)+' · 精神 '+Math.max(0,t.sp|0)+' · 羁绊 <span class="tai">'+t.bond+'</span>':'——已阵亡——')+'</div><div class="idesc">'+(t.echo?'回响已醒':'回响未醒')+'。危急可呼叫协助，羁绊越高越愿赴死；轮回后记忆清零。</div></div>';}
+  el('panelTem').innerHTML='<h4>乔家劲 · 生死之交</h4><div class="item-card"><div class="iname">'+(t.alive?'生命 '+Math.max(0,t.hp|0)+' · 精神 '+Math.max(0,t.sp|0)+' · 羁绊 <span class="tai">'+t.bond+'</span>':'——已阵亡——')+'</div><div class="idesc">'+(t.echo?'回响已醒':'回响未醒')+'。危急可呼叫协助，羁绊越高越愿赴死；轮回后记忆清零。'+(t.alive&&t.bond>=40&&!t.injured&&!t.guardUsed?'<br>他将为你挡下致命一击（每轮回一次）。':'')+'</div></div>';}
 setInterval(function(){if(el('app').style.display!=='none')renderPanels();},500);
 
 /* ---------- 自由输入 ---------- */
@@ -1191,6 +1289,7 @@ function handleSpeech(v){
 /* ===================== 考官答题 ===================== */
 function openExam(examiner,questions,onEnd){
   S.exam={examiner:examiner,qIdx:0,questions:questions,onEnd:onEnd,busy:0,anger:0,angerMax:ANGER_MAX[examiner]||3,angerUsed:0};
+  if(Stats){Stats.bump('exams');}
   AudioSys.sfx('exam');
   AudioSys.musicUpdate();
   talk(examiner,'你只觉一颗心在胸腔里擂鼓。他缓缓开口——');
@@ -1260,12 +1359,14 @@ function answerExam(v){
   if(q.accept&&q.accept(v)){
     out({t:'ok',x:'（你的回答，令考官沉默了片刻。）'});
     AudioSys.sfx('ok');
+    if(Stats){Stats.bump('good');}
     if(q.good)q.good(v);
     e.anger=Math.max(0,(e.anger||0)-1);renderAnger(e);
     e.qIdx++;askQ();
   }else{
     danger('—— 回答错误 / 触犯禁忌 ——');
     AudioSys.sfx('bad');
+    if(Stats){Stats.bump('bad');}
     if(q.bad)q.bad(v);else hurt(q.dmg||15,e.examiner+'：“答错，代价将至。”');
     e.anger=(e.anger||0)+1;
     if(e.anger>=e.angerMax&&!e.angerUsed)angerBurst(e);
@@ -1290,6 +1391,7 @@ function echoSolve(q){
     AudioSys.sfx('ok');
     echoX(S.echo.name+' 之辉普照，你窥破考官预设的答案。');
     out({t:'ok',x:'（回响替你叩开了答案之门。）'});
+    if(Stats){Stats.bump('good');}
     if(S.echo.name==='【洞悉】'&&!S.f_dongxi_revealed){S.f_dongxi_revealed=1;addC('局后推演·洞悉','洞悉在每一局后，替你多摊开一道暗线。',true);}
     if(S.echo.name==='【探囊】'){var pool=['半截银镯','一枚旧怀表','一页泛黄的试卷'];addI(pool[rand(0,2)],'探囊自虚空捞出的「你认为存在」之物。');}
     if(q.good)q.good();
@@ -1420,9 +1522,36 @@ function dayIntro(menuOnly){
   if(S.day>=6&&!S.flags.c3){rechapter3();return;}
   if(S.day>=9&&!S.flags.c4){finalDay();return;}
   if(S.day>=10){finalDay();return;}
+  if(S.tai.alive&&S.day>=3&&S.tai.bond>=20&&!S.flags.taiE3){S.flags.taiE3=1;taiEvent(3);return;}
+  if(S.tai.alive&&S.day>=5&&S.tai.bond>=40&&!S.flags.taiE5){S.flags.taiE5=1;taiEvent(5);return;}
   if(S.day===2&&!S.f_door3){pushBtn({label:'查那扇多出的门',fn:door3});}
   if(S.day===2&&!S.f_suzhan){pushBtn({label:'走廊尽头似有个壮硕身影',fn:suzhan});}
   pushBtn({label:'（第 '+S.day+' 日）继续前行',fn:function(){nar('你又熬过一日。灯灭，灯亮。');advanceDay();}});
+}
+/* 乔家劲 · 羁绊事件（第一期：交心 + 生死之约） */
+function taiEvent(n,next){
+  clearBtn();
+  if(n===3){
+    big('乔家劲 · 往事');
+    nar('夜里，乔家劲破天荒地没去打磨拳头，闷在墙角，灌了一口酒。');
+    talk('乔家劲','你只听过「义字比命值钱」，没听过老子栽在哪个「义」字上。');
+    nar('他说起一个背弃他的兄弟——为了一桩「大局」，对方把他卖给了考官。他活下来，靠的是一口硬气。');
+    talk('乔家劲','所以老子这辈子只认一个道理——谁拿命待我，我拿命待他。');
+    S.tai.bond+=5;tick();
+    ok('你们交心一场，羁绊 +5。');
+    AudioSys.sfx('good');
+    pushBtn({label:'继续',fn:function(){if(next)next();else dayIntro(true);}});
+  }else if(n===5){
+    big('乔家劲 · 约定');
+    nar('走廊尽头的灯忽明忽灭，乔家劲忽然把你拦下，难得地认真。');
+    talk('乔家劲','考官那些弯弯绕，老子不懂。老子只记住一条——');
+    talk('乔家劲','要是哪天你先倒下了，先倒下去的那个，得是老子。');
+    ghost('他捶了捶胸口，那一声闷响，比任何誓言都重。');
+    S.tai.bond+=5;tick();
+    ok('生死之约已立，羁绊 +5。危急之时，他愿为你挡下致命一击（每轮回一次）。');
+    AudioSys.sfx('good');
+    pushBtn({label:'继续',fn:function(){if(next)next();else dayIntro(true);}});
+  }
 }
 /* 第 2 日 可选支线：错位的第三扇门 */
 function door3(){
@@ -1490,9 +1619,14 @@ function chapter2(){
      good:function(){ok('考官·巨声：“好一个不矛盾。”');ghost('乔家劲在旁暗暗给你比了个大拇指。');S.tai.bond+=8;tick();},
      bad:function(){hurt(40,'考官·巨声：“世间本无两全。答错，就得死。”');}}
   ],function(){S.flags.c2=1;talk('考官·巨声','试炼未央，退下。');ok('—— 生背试炼上半通过 ——');
-    pushBtn({label:'分析巨声考官',fn:function(){addC('巨声的破绽','他反复试探你是否慌乱。此考官憎恶慌乱之人。');nar('你记下了巨声考官的话语节奏。');if(!S.f_doc){pushBtn({label:'翻考官落下的旧公文',fn:gongwen});}pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,4);advanceChain_rech3();}});}});
-    if(!S.f_doc){pushBtn({label:'翻考官落下的旧公文',fn:gongwen});}
-    pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,4);advanceChain_rech3();}});});
+    ch2Done();});
+}
+function ch2Done(){
+  clearBtn();
+  pushBtn({label:'分析巨声考官',fn:function(){addC('巨声的破绽','他反复试探你是否慌乱。此考官憎恶慌乱之人。');nar('你记下了巨声考官的话语节奏。');if(!S.f_doc){pushBtn({label:'翻考官落下的旧公文',fn:gongwen});}pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,4);advanceChain_rech3();}});}});
+  if(!S.f_doc){pushBtn({label:'翻考官落下的旧公文',fn:gongwen});}
+  if(S.tai.alive&&S.tai.bond>=20&&!S.flags.taiE3){S.flags.taiE3=1;pushBtn({label:'与乔家劲交心 · 听他讲讲往事',fn:function(){taiEvent(3,ch2Done);}});}
+  pushBtn({label:'休整一夜 · 转场',fn:function(){S.day=Math.max(S.day+1,4);advanceChain_rech3();}});
 }
 /* 支线：巨声考官的旧公文 */
 function gongwen(){
@@ -1523,9 +1657,14 @@ function rechapter3(){
      good:function(){ok('考官·无面：“勇气尚存。终焉之地，最贵的是敢推门的鬼。”');addDao(20);},
      bad:function(){hurt(45,'考官·无面：“退却者，亡于门中。”');}}
   ],function(){S.flags.c2done=1;talk('考官·无面','你过了我的试炼。三日之后，终章会有一位「老朋友」等你。');
-    ok('（夜里，你有一个去留抉择。）');
-    if(!S.f_mirror){pushBtn({label:'夜探无面的镜房',fn:mirrorroom});}
-    pushBtn({label:'径去见陈俊南与林楠',fn:function(){brk();center('（数日后）');chapter3entry();}});});
+    ch3Done();});
+}
+function ch3Done(){
+  clearBtn();
+  ok('（夜里，你有一个去留抉择。）');
+  if(!S.f_mirror){pushBtn({label:'夜探无面的镜房',fn:mirrorroom});}
+  if(S.tai.alive&&S.tai.bond>=40&&!S.flags.taiE5){S.flags.taiE5=1;pushBtn({label:'与乔家劲立誓 · 生死之约',fn:function(){taiEvent(5,ch3Done);}});}
+  pushBtn({label:'径去见陈俊南与林楠',fn:function(){brk();center('（数日后）');chapter3entry();}});
 }
 /* 支线：无面的镜房 */
 function mirrorroom(){
@@ -2587,6 +2726,7 @@ AudioSys.load();
 migrateLegacy();
 User.refreshBar();
 Game.refreshSaves();
+if(window.checkAchievements){try{checkAchievements();}catch(e){}}
 </script>
 </body>
 </html>
